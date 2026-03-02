@@ -57,5 +57,6 @@ The dataset follows the expected inspection data structure and can be uploaded d
 
 ```bash
 pip install -r requirements.txt
+venv\Scripts\activate
 streamlit run app.py
 ```
