@@ -45,6 +45,14 @@ It automates the evaluation of machine inspection data, supports root-cause anal
 
 ---
 
+## Sample Data
+
+A sample dataset is provided in the `sample_data/` folder for testing purposes.
+
+The dataset follows the expected inspection data structure and can be uploaded directly into the application.
+
+---
+
 ## How to Run
 
 ```bash
