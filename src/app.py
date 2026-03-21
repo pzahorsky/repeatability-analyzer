@@ -1,65 +1,88 @@
 import streamlit as st
+
+import state
 import ui.sidebar as ui_side
 import ui.main as ui_main
 import data_handler as dh
 import plotter as plt
 
+# ---> APP STATE INIT
+state.init_state()
 
-# --- DATA LOAD ---
-data = None
-data_raw = ui_side.data_upload()
+# ---> DATA LOADER
+data_uploaded = ui_side.data_upload()
 
-if data_raw:
+if data_uploaded is None:
+    state.clear_all_states()
+    st.stop()
+
+if data_uploaded:
     try:
-        data = dh.data_load(data_raw)
+        data = dh.data_load(data_uploaded)
+        state.set_value("data",data)
     except ValueError as e:
         st.error(str(e))
 
-if data is None:
-    st.session_state.clear()
+# ---> SIDEBAR FILTER PIPELINE
+if state.has_value("data"):
 
-sidebar_pipe_done = False
-components = None
-algorithms = None
-sample_vals = None
+    data = state.get_value("data")
+
+    subboards = ui_side.subboard_selector(
+                    dh.get_subboards(data)
+                    )
+    state.set_value("subboards", subboards)
+
+    if subboards:
+        data = dh.subboards_selected(data, subboards)
+
+        components = ui_side.component_selector(
+                    dh.get_components(data)
+        )
+        state.set_value("components", components)
+
+        if components:
+            data = dh.components_selected(data, components)
+
+            algorithms = ui_side.algorithm_selector(
+                dh.get_algorithms(data)
+            )
+            state.set_value("algorithms", algorithms)
+
+            if algorithms:
+                data = dh.algorithms_selected(data, algorithms)
+
+                sample_vals = ui_side.sample_val_selector(
+                    dh.get_sample_vals(data)
+                )
+                state.set_value("sample_vals", sample_vals)
+
+                if sample_vals:
+                    data = dh.sample_vals_selected(data, sample_vals)
+
+                    state.set_value("sidebar_pipeline_done", True)
+    
+    state.set_value("data", data)
+
+# ---> UI INIT
+viewer = ui_main.init_ui(
+    state.has_value("data")
+)
+
+# ---> UI RENDER
+if viewer is not None:
+    ui_main.render_view(viewer, state.get_value("data"))
+
+"""
 if "metrics_sel_done" not in st.session_state:
     st.session_state.metrics_sel_done = False
 if "scope_sel_done" not in st.session_state:
     st.session_state.scope_sel_done = False
 if "fail_analysis_enabled" not in st.session_state:
     st.session_state.fail_analysis_enabled = False
+"""
 
-# --- SUBBOARD SELECTION ---
-if data is not None:
-
-    subboards = ui_side.subboard_selector(
-        dh.get_subboards(data)
-    )
-    if subboards:
-        data = dh.subboards_selected(data, subboards)
-
-        # --- COMPONENT SELECTION ---
-        components = ui_side.component_selector(
-            dh.get_components(data)
-        )
-        if components:
-            data = dh.components_selected(data, components)
-
-            # --- ALGORITHM SELECTION ---
-            algorithms = ui_side.algorithm_selector(
-                dh.get_algorithms(data)
-            )
-            if algorithms:
-                data = dh.algorithms_selected(data, algorithms)
-
-                # --- SAMPLE VALUE SELECTION ---
-                sample_vals = ui_side.sample_val_selector(
-                    dh.get_sample_vals(data)
-                )
-                if sample_vals:
-                    data = dh.sample_vals_selected(data, sample_vals)
-                    sidebar_pipe_done = True
-
+"""
 # --- UI INIT ---
 viewer, metrics, scope, prelim, analysis, export = ui_main.init_ui(
     has_data = data is not None,
@@ -113,7 +136,7 @@ if export is not None:
                                   export_plot, 
                                   export, 
                                   enabled_metrics["metrics"])
-
+"""
    
    
             

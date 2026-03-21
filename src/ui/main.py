@@ -9,6 +9,31 @@ import report as rp
 # ------------------
 
 def init_ui(
+        data_available: bool
+):
+    
+    tabs = []
+
+    if data_available:
+        tabs.append("📑 Data Viewer")
+
+    if not tabs:
+        return None
+    
+    created_tabs = st.tabs(tabs)
+
+    viewer = None
+
+    tab_num = 0
+    if data_available:
+        with created_tabs[tab_num]:
+            viewer = st.empty()
+        tab_num += 1
+
+    return viewer
+
+"""
+def init_ui(
         has_data: bool, 
         sidebar_pipe_done: bool, 
         metrics_sel_done: bool,
@@ -72,6 +97,8 @@ def init_ui(
             export = st.container()
 
     return viewer, metrics, scope, prelim, analysis, export
+
+"""
 
 # -------------------
 # --- DATA VIEWER ---
