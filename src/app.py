@@ -32,6 +32,8 @@ if state.has_value("data"):
 
     data = state.get_value("data")
 
+    state.set_value("sidebar_pipeline_done", False)
+
     subboards = ui_side.subboard_selector(
                     dh.get_subboards(data)
                     )
@@ -69,9 +71,11 @@ if state.has_value("data"):
     state.set_value("data", data)
 
 # ---> UI INIT
-viewer, columns = ui_main.init_ui(
+viewer, columns, metrics, scope = ui_main.init_ui(
     state.has_value("data"),
-    state.get_value("rename_columns")
+    state.get_value("rename_columns"),
+    state.get_value("sidebar_pipeline_done"),
+    state.get_value("metrics_sel_done")
 )
 
 # ---> UI RENDER
@@ -81,9 +85,18 @@ if viewer is not None:
 if columns is not None:
     ui_main.rename_columns(columns)
 
+if metrics is not None:
+    ui_main.render_metrics(metrics)
+
+if scope is not None:
+    elements = dh.scope_elements(
+        state.get_value("data"),
+        state.get_value("components"))
+    if elements:
+        selected_pins = ui_main.render_scope(scope, elements)
+        data = dh.data_after_scope(data,selected_pins)
+
 """
-if "metrics_sel_done" not in st.session_state:
-    st.session_state.metrics_sel_done = False
 if "scope_sel_done" not in st.session_state:
     st.session_state.scope_sel_done = False
 if "fail_analysis_enabled" not in st.session_state:
@@ -92,21 +105,13 @@ if "fail_analysis_enabled" not in st.session_state:
 
 """
 # --- UI INIT ---
-viewer, metrics, scope, prelim, analysis, export = ui_main.init_ui(
-    has_data = data is not None,
-    sidebar_pipe_done = sidebar_pipe_done,
-    metrics_sel_done = st.session_state.metrics_sel_done,
+scope, prelim, analysis, export = ui_main.init_ui(
     scope_sel_done = st.session_state.scope_sel_done,
     fail_analysis_enabled = st.session_state.fail_analysis_enabled,
 )
 
 # --- UI RENDER ---
-if viewer is not None:
-    ui_main.render_view(viewer, data)
-
-if metrics is not None:
-    enabled_metrics = ui_main.render_metrics(metrics)
-    
+   
 if scope is not None and components:
         pins = dh.scope_pins(data,components)
         if pins:

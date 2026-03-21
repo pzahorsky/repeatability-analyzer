@@ -17,7 +17,10 @@ def init_state():
         "Change_Component": "Component",
         "Change_Algorithm": "Algorithm Name",
         "Change_Sample_Value": "Sample Name",
+        "Change_Element_Id": "Element Id",
         "last_loaded_config_name": None,
+        "metrics_sel_done": False,
+        "metrics": None
     }
 
     for key, value in default.items():

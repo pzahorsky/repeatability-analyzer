@@ -11,7 +11,9 @@ import report as rp
 
 def init_ui(
         data_available: bool,
-        rename_columns: bool
+        rename_columns: bool,
+        sidebar_pipe_done: bool,
+        metrics_done: bool,
 ):
 
     tabs = []
@@ -20,14 +22,20 @@ def init_ui(
         tabs.append("📑 Data Viewer")
     if rename_columns:
         tabs.append("🛠️ Rename columns")
+    if sidebar_pipe_done:
+        tabs.append("📊 Metrics")
+    if metrics_done:
+        tabs.append("🔍 Scope")
 
     if not tabs:
-        return None, None
+        return None, None, None, None
     
     created_tabs = st.tabs(tabs)
 
     viewer = None
     columns = None
+    metrics = None
+    scope = None
 
     tab_num = 0
     if data_available:
@@ -38,8 +46,17 @@ def init_ui(
         with created_tabs[tab_num]:
             columns = st.container()
         tab_num += 1
+    if sidebar_pipe_done:
+        with created_tabs[tab_num]:
+            metrics = st.container()
+        tab_num += 1
+    if metrics_done:
+        with created_tabs[tab_num]:
+            scope = st.container()
+        tab_num += 1
+    
 
-    return viewer, columns
+    return viewer, columns, metrics, scope
 
 """
 def init_ui(
@@ -134,19 +151,26 @@ def rename_columns(columns):
             st.session_state["Change_Component"] = loaded.get("Component", "")
             st.session_state["Change_Algorithm"] = loaded.get("Algorithm", "")
             st.session_state["Change_Sample_Value"] = loaded.get("Sample Value", "")
+            st.session_state["Change_Element_Id"] = loaded.get("Element Id", "")
 
             del st.session_state["loaded_rename_config"]
 
     with columns:    
-        static_text, input_text, rgap = st.columns([1,1,2])
-        static_text.subheader("Column Name")
-        input_text.subheader("Change Column Name")
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])
+        static_text.subheader("Reference Column Name")
+        input_text.subheader("New Column Name")
+        static_text2.subheader("Reference Column Name")
+        input_text2.subheader("New Column Name")
 
         
-        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])  
         static_text.text("Sub-Board")
         input_text.text_input("Sub-Board", key="Change_Sub-Board",
                                value = "Sub-board", 
+                               label_visibility = "collapsed")
+        static_text2.text("Element Id")
+        input_text2.text_input("Element Id", key="Change_Element_Id",
+                               value = "Element Id", 
                                label_visibility = "collapsed")
 
         static_text, input_text, rgap = st.columns([1,1,2])  
@@ -183,7 +207,8 @@ def rename_columns(columns):
                 "Sub-Board": config.get("Sub-Board",""),
                 "Component": config.get("Component", ""),
                 "Algorithm": config.get("Algorithm", ""),
-                "Sample Value": config.get("Sample Value", "")
+                "Sample Value": config.get("Sample Value", ""),
+                "Element Id": config.get("Element Id", "")
             }
             st.session_state["last_loaded_config_name"] = config_file.name
             st.rerun()
@@ -192,7 +217,8 @@ def rename_columns(columns):
             "Sub-Board": st.session_state.get("Change_Sub-Board", ""),
             "Component": st.session_state.get("Change_Component", ""),
             "Algorithm": st.session_state.get("Change_Algorithm", ""),
-            "Sample Value": st.session_state.get("Change_Sample_Value", "")
+            "Sample Value": st.session_state.get("Change_Sample_Value", ""),
+            "Element Id": st.session_state.get("Change_Element_Id", "")
         }
 
         json_bytes = json.dumps(rename_map, indent=4).encode("utf-8")
@@ -212,12 +238,7 @@ def rename_columns(columns):
             st.session_state["last_loaded_config_name"] = None
             st.rerun()
                    
-        
-
-
-# -------------------
-# --- METRICS TAB ---
-# -------------------
+# ---> METRICS <---
 
 def render_metrics(metrics):
 
@@ -237,7 +258,7 @@ def render_metrics(metrics):
 
         metrics_dict = {
             "metrics": {},
-            "limits": {},
+            "glob_limits": {},
         }
 
         rows = [
@@ -297,6 +318,13 @@ def render_metrics(metrics):
 
         for row in rows:
             metric_id = row["key"]
+
+            disabled = (
+                (metric_id in ["cp", "cpk"] and any(st.session_state.get(f"metric_enabled{k}", False) for k in ["cg", "cgk"]))
+                or
+                (metric_id in ["cg", "cgk"] and any(st.session_state.get(f"metric_enabled{k}", False) for k in ["cp", "cpk"]))
+            )
+            
             c1, c2, c3, c4 = st.columns([1.5, 4.5, 4, 1])
 
             c1.markdown(f"**{row["name"]}**")
@@ -306,6 +334,7 @@ def render_metrics(metrics):
             metrics_dict["metrics"][metric_id] = c4.checkbox(
                 "",
                 key=f"metric_enabled{metric_id}",
+                disabled=disabled,
                 on_change=_update_metrics_state)
 
             st.markdown("---")
@@ -335,23 +364,25 @@ def render_metrics(metrics):
                             key="lsl_input",
                             label_visibility="collapsed"
                         )
-        metrics_dict["limits"]["USL"] = tolerance_usl
-        metrics_dict["limits"]["LSL"] = tolerance_lsl
+        metrics_dict["glob_limits"]["USL"] = tolerance_usl
+        metrics_dict["glob_limits"]["LSL"] = tolerance_lsl
 
         metrics_selected = any(metrics_dict["metrics"].values())
+
         st.session_state.metrics_sel_done = metrics_selected
 
-        return metrics_dict    
+        if metrics_selected:
+            st.session_state["metrics"] = metrics_dict
+        else:
+            st.session_state["metrics"] = None
      
-# -------------------
-# ---- SCOPE TAB ----
-# -------------------
+# ---> SCOPE <---
 
-def render_scope(scope, pins):
+def render_scope(scope, elements):
     with scope:
 
-        if "all_pins_prev" not in st.session_state:
-            st.session_state.all_pins_prev = False
+        if "all_elements_prev" not in st.session_state:
+            st.session_state.all_elements_prev = False
         if "scope_sel_done" not in st.session_state:
             st.session_state.scope_sel_done = False
         
@@ -361,9 +392,9 @@ def render_scope(scope, pins):
         c0, c1 = st.columns([0.15, 8])
         
         with c1:
-            all_pins = st.checkbox(
-                "Select all pins for selected components",
-                key="all_pins_enabled",
+            all_elements = st.checkbox(
+                "Select all elements for selected components",
+                key="all_elements_enabled",
                 on_change=_scope_sel_done
                 )
         
@@ -371,31 +402,31 @@ def render_scope(scope, pins):
 
         c1, c2 = st.columns([2,8])
         c1.markdown("**Components**")
-        c2.markdown("**Pins**")
+        c2.markdown("**Elements**")
 
         selection_dict = {}
 
-        for component, pins in pins.items():
+        for component, elements in elements.items():
 
-            int_pins = [int(p) for p in pins]
+            int_elements = [int(p) for p in elements]
 
             key = f"multiselect_{component}"
 
-            if all_pins and not st.session_state.all_pins_prev:
-                st.session_state[key] = int_pins
+            if all_elements and not st.session_state.all_elements_prev:
+                st.session_state[key] = int_elements
             
             c1, c2 = st.columns([2,8],vertical_alignment="center")
 
             c1.markdown(f"**{component}**")
-            selected_pins = c2.multiselect(
+            selected_elements = c2.multiselect(
                                 "",
-                                options=int_pins,
+                                options=int_elements,
                                 key=key
                             )
-            selection_dict[component] = selected_pins
+            selection_dict[component] = selected_elements
             st.markdown("---")
 
-        st.session_state.all_pins_prev = all_pins
+        st.session_state.all_elements_prev = all_elements
 
         st.session_state.scope_sel_done = any(selection_dict.values())
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import streamlit as st
 import numpy as np
 
 
@@ -30,42 +31,85 @@ def data_load(up_data) -> pd.DataFrame:
 
 # --- SUB BOARD FILTER --- 
 def get_subboards(data):
-    return sorted(data["Sub-board"].dropna().unique())
+    col = st.session_state["Change_Sub-Board"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return sorted(data[col].dropna().unique())
 
 def subboards_selected(data, selection):
-    return data[data["Sub-board"].isin(selection)]
+    col = st.session_state["Change_Sub-Board"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return data[data[col].isin(selection)]
 
 # --- COMPONENT FILTER ---
 def get_components(data):
-    return sorted(data["Component"].dropna().unique())
+    col = st.session_state["Change_Component"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return sorted(data[col].dropna().unique())
 
 def components_selected(data, selection):
-    return data[data["Component"].isin(selection)]
+    col = st.session_state["Change_Component"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return data[data[col].isin(selection)]
 
 # --- ALGORITHM FILTER ---
 def get_algorithms(data):
-    return sorted(data["Algorithm Name"].dropna().unique())
+    col = st.session_state["Change_Algorithm"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return sorted(data[col].dropna().unique())
 
 def algorithms_selected(data, selection):
-    return data[data["Algorithm Name"].isin(selection)]
+    col = st.session_state["Change_Algorithm"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return data[data[col].isin(selection)]
 
 # --- SAMPLE VALUE FILTER ---
 def get_sample_vals(data):
-    return sorted(data["Sample Name"].dropna().unique())
+    col = st.session_state["Change_Sample_Value"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return sorted(data[col].dropna().unique())
 
 def sample_vals_selected(data, selection):
-    return data[data["Sample Name"].isin(selection)]
+    col = st.session_state["Change_Sample_Value"]
+
+    if col not in data.columns:
+        st.error(f"Column '{col}' not found")
+        return []
+    return data[data[col].isin(selection)]
 
 # -----------------    
 # --- SCOPE TAB ---
 # -----------------
 
-def scope_pins(data, components):
-    scoped = data[data["Component"].isin(components)].dropna()
+def scope_elements(data, components):
+    component_col = st.session_state["Change_Component"]
+    element_col = st.session_state["Change_Element_Id"]
+
+    scoped = data[data[component_col].isin(components)].dropna()
     
     return (
         scoped
-        .groupby("Component")["Pin Id"]
+        .groupby(component_col)[element_col]
         .apply(lambda s: sorted(s.dropna().unique()))
         .to_dict()
     )
