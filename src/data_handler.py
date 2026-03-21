@@ -118,11 +118,14 @@ def scope_elements(data, components):
 # --- DATA FILTER AFTER PIN SELECTION ---
 # ---------------------------------------
 
-def data_after_scope(data, comps_and_pins):
+def data_after_scope(data, comps_and_elements):
+    component_col = st.session_state["Change_Component"]
+    element_col = st.session_state["Change_Element_Id"]
+
     mask = data.apply(
         lambda row: (
-            row["Component"] in comps_and_pins
-            and row["Pin Id"] in comps_and_pins[row["Component"]]
+            row[component_col] in comps_and_elements
+            and row[element_col] in comps_and_elements[row[component_col]]
         ),
         axis=1
     )

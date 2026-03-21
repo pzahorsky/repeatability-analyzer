@@ -93,9 +93,10 @@ if scope is not None:
         state.get_value("data"),
         state.get_value("components"))
     if elements:
-        selected_pins = ui_main.render_scope(scope, elements)
-        data = dh.data_after_scope(data,selected_pins)
-
+        selected_elements = ui_main.render_scope(scope, elements)
+        data = dh.data_after_scope(state.get_value("data")
+                                   ,selected_elements)
+        state.set_value("data", data)
 """
 if "scope_sel_done" not in st.session_state:
     st.session_state.scope_sel_done = False

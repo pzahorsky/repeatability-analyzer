@@ -381,22 +381,14 @@ def render_metrics(metrics):
 def render_scope(scope, elements):
     with scope:
 
-        if "all_elements_prev" not in st.session_state:
-            st.session_state.all_elements_prev = False
         if "scope_sel_done" not in st.session_state:
             st.session_state.scope_sel_done = False
-        
-        def _scope_sel_done():
-            st.session_state.scope_sel_done = True
 
         c0, c1 = st.columns([0.15, 8])
         
         with c1:
-            all_elements = st.checkbox(
-                "Select all elements for selected components",
-                key="all_elements_enabled",
-                on_change=_scope_sel_done
-                )
+            all_elements = st.button(
+                                 "Select all elements for selected components")
         
         st.markdown("---")
 
@@ -412,7 +404,7 @@ def render_scope(scope, elements):
 
             key = f"multiselect_{component}"
 
-            if all_elements and not st.session_state.all_elements_prev:
+            if all_elements:
                 st.session_state[key] = int_elements
             
             c1, c2 = st.columns([2,8],vertical_alignment="center")
@@ -426,9 +418,8 @@ def render_scope(scope, elements):
             selection_dict[component] = selected_elements
             st.markdown("---")
 
-        st.session_state.all_elements_prev = all_elements
-
         st.session_state.scope_sel_done = any(selection_dict.values())
+        
 
         return selection_dict
 

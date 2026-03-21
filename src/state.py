@@ -20,7 +20,8 @@ def init_state():
         "Change_Element_Id": "Element Id",
         "last_loaded_config_name": None,
         "metrics_sel_done": False,
-        "metrics": None
+        "metrics": None,
+        "scope_sel_done": False
     }
 
     for key, value in default.items():
