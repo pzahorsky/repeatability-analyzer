@@ -6,14 +6,18 @@ import ui.main as ui_main
 import data_handler as dh
 import plotter as plt
 
-# ---> APP STATE INIT
+# ---> APP STATE INIT <---
 state.init_state()
 
-# ---> DATA LOADER
+# ---> RENAME COLUMNS <---
+if ui_side.rename_columns():
+    state.set_value("rename_columns", True)
+
+# ---> DATA LOADER <---
 data_uploaded = ui_side.data_upload()
 
 if data_uploaded is None:
-    state.clear_all_states()
+    state.clear_states()
     st.stop()
 
 if data_uploaded:
@@ -65,13 +69,17 @@ if state.has_value("data"):
     state.set_value("data", data)
 
 # ---> UI INIT
-viewer = ui_main.init_ui(
-    state.has_value("data")
+viewer, columns = ui_main.init_ui(
+    state.has_value("data"),
+    state.get_value("rename_columns")
 )
 
 # ---> UI RENDER
 if viewer is not None:
     ui_main.render_view(viewer, state.get_value("data"))
+
+if columns is not None:
+    ui_main.rename_columns(columns)
 
 """
 if "metrics_sel_done" not in st.session_state:

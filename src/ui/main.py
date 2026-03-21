@@ -1,36 +1,45 @@
 import streamlit as st
+import json
+
 import pandas as pd
 import base64
 import data_handler as dh
 import report as rp
 
-# ------------------
-# ---- TAB VIEW ----
-# ------------------
+
+# ---> UI INIT <---
 
 def init_ui(
-        data_available: bool
+        data_available: bool,
+        rename_columns: bool
 ):
-    
+
     tabs = []
 
     if data_available:
         tabs.append("📑 Data Viewer")
+    if rename_columns:
+        tabs.append("🛠️ Rename columns")
 
     if not tabs:
-        return None
+        return None, None
     
     created_tabs = st.tabs(tabs)
 
     viewer = None
+    columns = None
 
     tab_num = 0
     if data_available:
         with created_tabs[tab_num]:
             viewer = st.empty()
         tab_num += 1
+    if rename_columns:
+        with created_tabs[tab_num]:
+            columns = st.container()
+        tab_num += 1
 
-    return viewer
+    return viewer, columns
 
 """
 def init_ui(
@@ -100,10 +109,8 @@ def init_ui(
 
 """
 
-# -------------------
-# --- DATA VIEWER ---
-# -------------------
 
+# ---> DATA VIEWER <---
 def render_view(viewer, data):
     if data is None:
         return
@@ -116,6 +123,97 @@ def render_view(viewer, data):
             data,
             width="stretch",
             height=height)
+        
+# ---> RENAME COLUMNS <---
+def rename_columns(columns):
+
+    if "loaded_rename_config" in st.session_state:
+            loaded = st.session_state["loaded_rename_config"]
+
+            st.session_state["Change_Sub-Board"] = loaded.get("Sub-Board", "")
+            st.session_state["Change_Component"] = loaded.get("Component", "")
+            st.session_state["Change_Algorithm"] = loaded.get("Algorithm", "")
+            st.session_state["Change_Sample_Value"] = loaded.get("Sample Value", "")
+
+            del st.session_state["loaded_rename_config"]
+
+    with columns:    
+        static_text, input_text, rgap = st.columns([1,1,2])
+        static_text.subheader("Column Name")
+        input_text.subheader("Change Column Name")
+
+        
+        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text.text("Sub-Board")
+        input_text.text_input("Sub-Board", key="Change_Sub-Board",
+                               value = "Sub-board", 
+                               label_visibility = "collapsed")
+
+        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text.text("Component")
+        input_text.text_input("Component", key="Change_Component",
+                               value = "Component", 
+                               label_visibility = "collapsed")
+             
+
+        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text.text("Algorithm")
+        input_text.text_input("Algorithm", key="Change_Algorithm",
+                               value = "Algorithm Name", 
+                               label_visibility = "collapsed")      
+
+        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text.text("Sample Value")
+        input_text.text_input("Sample Value", key="Change_Sample_Value",
+                               value = "Sample Name", 
+                               label_visibility = "collapsed")
+        
+        st.markdown("---")
+
+        load_config, save_config, close_window, rgap= st.columns([1,1,1,1])
+
+        config_file = load_config.file_uploader(
+            "📁 Upload Configuration file file", type="json")
+        save_config.markdown("💾 Save configuration to file")
+        
+        if config_file is not None and st.session_state.get("last_loaded_config_name") != config_file.name:
+            config = json.load(config_file)
+
+            st.session_state["loaded_rename_config"] = {
+                "Sub-Board": config.get("Sub-Board",""),
+                "Component": config.get("Component", ""),
+                "Algorithm": config.get("Algorithm", ""),
+                "Sample Value": config.get("Sample Value", "")
+            }
+            st.session_state["last_loaded_config_name"] = config_file.name
+            st.rerun()
+
+        rename_map = {
+            "Sub-Board": st.session_state.get("Change_Sub-Board", ""),
+            "Component": st.session_state.get("Change_Component", ""),
+            "Algorithm": st.session_state.get("Change_Algorithm", ""),
+            "Sample Value": st.session_state.get("Change_Sample_Value", "")
+        }
+
+        json_bytes = json.dumps(rename_map, indent=4).encode("utf-8")
+
+        save_config.download_button(
+            "Save",
+            data=json_bytes,
+            file_name="rename_columns.json",
+            mime="application/json",
+            use_container_width=True
+)
+        close_window.markdown("🔚 Close Configurator")
+        close_tab = close_window.button("Close", use_container_width=True)
+
+        if close_tab:
+            st.session_state["rename_columns"] = False
+            st.session_state["last_loaded_config_name"] = None
+            st.rerun()
+                   
+        
+
 
 # -------------------
 # --- METRICS TAB ---
