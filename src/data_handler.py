@@ -191,6 +191,9 @@ def data_prelim_results(data, metrics):
                      element_name_col, algorithm_col, sample_value_col,
                      stdev_col, mean_col,"USL_glob", "LSL_glob"]
     
+    data[element_id_col] = pd.to_numeric(data[element_id_col],
+                                          errors="coerce").astype(int)
+    
     METRIC_COL_MAP = {
         "cp": "Cp_glob",
         "cpk": "Cpk_glob",

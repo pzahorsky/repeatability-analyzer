@@ -203,7 +203,7 @@ def rename_columns(columns):
             "Algorithm": st.session_state.get("Change_Algorithm", ""),
             "Sample Value": st.session_state.get("Change_Sample_Value", ""),
             "Element Id": st.session_state.get("Change_Element_Id", ""),
-            "Change_Element_Name": st.session_state.get("Change_Element_Name", ""),
+            "Element Name": st.session_state.get("Change_Element_Name", ""),
             "Mean": st.session_state.get("Change_Mean", ""),
             "StDev": st.session_state.get("Change_StDev", "")
         }
