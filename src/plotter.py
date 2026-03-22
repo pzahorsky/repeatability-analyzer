@@ -179,11 +179,11 @@ def results_export_plotter(data, metrics):
         cp_values = None
         cpk_values = None
         
-        if metrics.get("Cp"):
-            cp_values = data["Cp"].values
+        if metrics.get("cp"):
+            cp_values = data["Cp_glob"].values
             values = cp_values
-        if metrics.get("Cpk"):
-            cpk_values = data["Cpk"].values
+        if metrics.get("cpk"):
+            cpk_values = data["Cpk_glob"].values
             if cp_values is None:
                 values = cpk_values
 

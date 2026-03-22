@@ -71,7 +71,7 @@ if state.has_value("data"):
     state.set_value("data", data)
 
 # ---> UI INIT
-viewer, columns, metrics, scope, prelim, analysis, tolerance = ui_main.init_ui(
+viewer, columns, metrics, scope, prelim, analysis, tolerance, results, export = ui_main.init_ui(
     state.has_value("data"),
     state.get_value("rename_columns"),
     state.get_value("sidebar_pipeline_done"),
@@ -121,7 +121,6 @@ if analysis is not None:
     metrics = state.get_value("metrics")
 
     data_prelim_failed = dh.data_for_analysis(data, failed_rows)
-    st.write(metrics["metrics"])
     figs = plt.fail_analysis_plotter(data_prelim_failed, metrics["metrics"])
     ui_main.render_fail_analysis(data_prelim_failed,
                                  analysis,
@@ -136,33 +135,21 @@ if tolerance is not None:
     data = dh.data_after_tolerances()
     state.set_value("data", data)
 
-"""
-# --- UI INIT ---
-analysis, export = ui_main.init_ui(
-    fail_analysis_enabled = st.session_state.fail_analysis_enabled,
-)
+if results is not None:
+    pass
 
-# --- UI RENDER ---
- 
-
-if analysis is not None and has_fails:
-    data_failed = dh.data_for_analysis(data, failed_rows)
-    figs = plt.fail_analysis_plotter(data_failed,enabled_metrics["metrics"])
-    ui_main.render_fail_analysis(data_failed,
-                                 analysis,
-                                 figs,
-                                 enabled_metrics["metrics"])
-    
+# CURENTLY SET TO EXPORT ONLY PRELIM DATA !!!
 if export is not None:
-    export_plot = plt.results_export_plotter(data_for_prelim, 
-                                             enabled_metrics["metrics"])
+    data_prelim = state.get_value("data_prelim")
+    metrics = state.get_value("metrics")
+
+    export_plot = plt.results_export_plotter(data_prelim, 
+                                             metrics["metrics"])
     ui_main.render_export_results(data,
                                   export_plot, 
                                   export, 
-                                  enabled_metrics["metrics"])
-"""
-   
-   
+                                  metrics["metrics"])
+
             
 
 

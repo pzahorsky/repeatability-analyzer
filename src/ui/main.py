@@ -34,9 +34,13 @@ def init_ui(
         tabs.append("⚠️ Fail Analysis")
     if scope_sel_done:
         tabs.append("📏 Tolerances")
+    if scope_sel_done:
+        tabs.append("📈 Results")
+    if scope_sel_done:
+        tabs.append("💾 Export Results")
 
     if not tabs:
-        return None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None
     
     created_tabs = st.tabs(tabs)
 
@@ -47,6 +51,8 @@ def init_ui(
     prelim = None
     analysis = None
     tolerance = None
+    results = None
+    export = None
 
     tab_num = 0
     if data_available:
@@ -77,76 +83,16 @@ def init_ui(
         with created_tabs[tab_num]:
             tolerance = st.container()
         tab_num += 1
-
-    return viewer, columns, metrics, scope, prelim, analysis, tolerance
-
-"""
-def init_ui(
-        has_data: bool, 
-        sidebar_pipe_done: bool, 
-        metrics_sel_done: bool,
-        scope_sel_done: bool,
-        fail_analysis_enabled: bool,
-    ):
-    
-    tabs = []
-
-    if has_data: 
-        tabs.append("📑 Data Viewer")
-    if sidebar_pipe_done:
-        tabs.append("📊 Metrics")
-    if metrics_sel_done:
-        tabs.append("🔍 Scope")
     if scope_sel_done:
-        tabs.append("📋 Prelim Results")
-        if fail_analysis_enabled:
-            tabs.append("⚠️ Fail Analysis")
-        tabs.append("💾 Export Results")
-    
-    if not tabs:
-        return None, None, None, None, None, None
-
-    created_tabs = st.tabs(tabs)
-    
-    viewer = None
-    metrics = None
-    scope = None
-    prelim = None
-    analysis = None
-    export = None
-
-    i = 0
-    if has_data:
-        with created_tabs[i]:
-            viewer = st.empty()
-        i += 1
-
-    if sidebar_pipe_done:
-        with created_tabs[i]:
-            metrics = st.container()
-        i += 1
-    
-    if metrics_sel_done:
-        with created_tabs[i]:
-            scope = st.container()
-        i += 1
-
+        with created_tabs[tab_num]:
+            results = st.container()
+        tab_num += 1
     if scope_sel_done:
-        with created_tabs[i]:
-            prelim = st.container()
-        i += 1
-
-        if fail_analysis_enabled:
-            with created_tabs[i]:
-                analysis = st.container()
-            i += 1
-
-        with created_tabs[i]:
+        with created_tabs[tab_num]:
             export = st.container()
+        tab_num += 1
 
-    return viewer, metrics, scope, prelim, analysis, export
-
-"""
+    return viewer, columns, metrics, scope, prelim, analysis, tolerance, results, export
 
 
 # ---> DATA VIEWER <---
@@ -772,14 +718,7 @@ def render_export_results(data, fig, export, metrics):
             mime="application/pdf",
         )
 
-     
-                
 
-"""
-        c1,c2 = st.columns([5,5])
-        with c1:
-            st.pyplot(fig, use_container_width=True)
-"""
             
             
         
