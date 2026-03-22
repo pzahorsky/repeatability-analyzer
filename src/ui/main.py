@@ -14,7 +14,8 @@ def init_ui(
         rename_columns: bool,
         sidebar_pipe_done: bool,
         metrics_done: bool,
-        scope_sel_done: bool
+        scope_sel_done: bool,
+        analysis_enabled: bool
 ):
 
     tabs = []
@@ -29,10 +30,13 @@ def init_ui(
         tabs.append("🔍 Scope")
     if scope_sel_done:
         tabs.append("📋 Prelim Results")
-        tabs.append("📏 Limits")
+    if analysis_enabled:
+        tabs.append("⚠️ Fail Analysis")
+    if scope_sel_done:
+        tabs.append("📏 Tolerances")
 
     if not tabs:
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None
     
     created_tabs = st.tabs(tabs)
 
@@ -41,6 +45,7 @@ def init_ui(
     metrics = None
     scope = None
     prelim = None
+    analysis = None
     tolerance = None
 
     tab_num = 0
@@ -62,11 +67,18 @@ def init_ui(
         tab_num += 1
     if scope_sel_done:
         with created_tabs[tab_num]:
-            prelim = st.container()
+            prelim = st.container()    
+        tab_num += 1
+    if analysis_enabled:
+        with created_tabs[tab_num]:
+            analysis = st.container()
+        tab_num += 1
+    if scope_sel_done:
+        with created_tabs[tab_num]:
             tolerance = st.container()
-        tab_num += 2
+        tab_num += 1
 
-    return viewer, columns, metrics, scope, prelim, tolerance
+    return viewer, columns, metrics, scope, prelim, analysis, tolerance
 
 """
 def init_ui(
@@ -410,9 +422,6 @@ def render_metrics(metrics):
 def render_scope(scope, elements):
     with scope:
 
-        if "scope_sel_done" not in st.session_state:
-            st.session_state.scope_sel_done = False
-
         c0, c1 = st.columns([0.15, 8])
         
         with c1:
@@ -484,10 +493,7 @@ def render_prelim_results(data, enabled_metrics, prelim):
     with prelim:
         st.dataframe(styled_data, height=height)
 
-# -------------------
-#  FAIL ANALYSIS TAB 
-# -------------------
-
+# ---> FAIL ANALYSIS <---
 def render_fail_analysis(data, analysis, figs, metrics):
 
     if "step_idx" not in st.session_state:
@@ -609,6 +615,120 @@ def render_fail_analysis(data, analysis, figs, metrics):
 
             st.dataframe(data_fail_extracted,
                          hide_index=True)
+
+
+# ---> TOLERANCES <---
+def render_tolerances(tolerance, tol_elements):
+
+    tolerances_dict = st.session_state["tolerances_dict"]
+
+    with tolerance:
+        c1, c2, c3, c4 = st.columns([1,1,1.25,2])
+        c1.markdown("**Sample Value**")
+        c2.markdown("**Elements**")
+        c3.markdown("**Symmetric / Asymmetric**")
+        with c4:
+            sc1, sc2, sc3, sc4, sc5 = st.columns([1,1,1,1,1])
+            sc1.markdown("**Target**")
+            sc2.markdown("**Type**")
+            sc3.markdown("**Delta**")
+            sc4.markdown("**USL**")
+            sc5.markdown("**LSL**")
+
+        st.markdown("---")
+
+        for sample_name, element in tol_elements.items():
+
+            if sample_name not in tolerances_dict:
+                tolerances_dict[sample_name] = {}
+
+            elements = [e for e in element]
+            key_select = f"select_{sample_name}"
+            key_radio = f"radio_{sample_name}"
+            key_target = f"target_{sample_name}"
+            key_type = f"type_{sample_name}"
+            key_delta = f"delta_{sample_name}"
+            key_usl = f"usl_{sample_name}"
+            key_lsl = f"lsl_{sample_name}"
+
+            c1, c2, c3, c4 = st.columns([1,1,1.25,2])
+            c1.markdown(f"{sample_name}")
+            selected_elements = c2.selectbox(
+                                "",
+                                options = elements,
+                                key = key_select,
+                                label_visibility = "collapsed"
+                            )
+
+            with c3:
+                c3c1, c3c2, c3c3 = st.columns([1,2,1])
+             
+                tolerance_type = c3c2.radio(
+                                    "Tolerance Type",
+                                    options=["Sym", "Asym"],
+                                    horizontal=True,
+                                    key = key_radio,
+                                    label_visibility = "collapsed"
+
+                                )
+            
+            with c4:
+                
+                usl = None
+                lsl = None
+
+                c4c1, c4c2, c4c3, c4c4, c4c5 = st.columns([1,1,1,1,1])
+
+                if tolerance_type == "Sym":
+                    target = c4c1.text_input(f"target_{sample_name}",
+                                    label_visibility = "collapsed",
+                                    key = key_target,)
+                    
+                    type = c4c2.selectbox(f"type_{sample_name}",
+                                label_visibility = "collapsed",
+                                options = ["Const", "%"],
+                                key = key_type)
+                    delta = c4c3.text_input(f"delta_{sample_name}",
+                                    label_visibility = "collapsed",
+                                    key = key_delta)
+
+                    target = float(target) if target.strip() else None
+                    delta = float(delta) if delta.strip() else None
+
+                    if type == "Const":
+                        if target is not None and delta is not None:
+                            usl = target + delta
+                            lsl = target - delta
+                    elif type == "%":
+                        if target is not None and delta is not None:
+                            usl = target * (delta / 100)
+                            lsl = -target * (delta / 100)
+
+                    c4c4.text(f"{usl}")
+                    c4c5.text(f"{lsl}")
+
+                elif tolerance_type == "Asym":
+                    target = None
+                    usl = c4c4.text_input(f"usl_{sample_name}",
+                                           label_visibility = "collapsed",
+                                           key = key_usl)
+                    lsl = c4c5.text_input(f"lsl_{sample_name}",
+                                          label_visibility = "collapsed",
+                                          key = key_lsl)
+                    
+                    usl = int(usl) if usl.strip() else None
+                    lsl = int(lsl) if lsl.strip() else None
+
+            tolerances_dict[sample_name][selected_elements] = {
+                "target" : target,
+                "usl" : usl,
+                "lsl" : lsl               
+            }
+
+# -------------------
+#  FAIL ANALYSIS TAB 
+# -------------------
+
 
 # -------------------
 # EXPORT RESULTS TAB 

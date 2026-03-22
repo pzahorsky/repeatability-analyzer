@@ -71,12 +71,13 @@ if state.has_value("data"):
     state.set_value("data", data)
 
 # ---> UI INIT
-viewer, columns, metrics, scope, prelim, tolerance = ui_main.init_ui(
+viewer, columns, metrics, scope, prelim, analysis, tolerance = ui_main.init_ui(
     state.has_value("data"),
     state.get_value("rename_columns"),
     state.get_value("sidebar_pipeline_done"),
     state.get_value("metrics_sel_done"),
-    state.get_value("scope_sel_done")
+    state.get_value("scope_sel_done"),
+    state.get_value("fail_analysis_enabled")
 )
 
 # ---> UI RENDER
@@ -114,7 +115,12 @@ if prelim is not None:
     ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
 
 if tolerance is not None:
-    pass
+    data = state.get_value("data")
+    tol_elements = dh.tolerances_elements(data)
+    
+    ui_main.render_tolerances(tolerance, tol_elements)
+    data = dh.data_after_tolerances()
+    state.set_value("data", data)
 
 """
 # --- UI INIT ---

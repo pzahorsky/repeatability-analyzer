@@ -27,7 +27,8 @@ def init_state():
         "scope_sel_done": False,
         "prelim_failed_rows": None,
         "data_prelim": None,
-        "fail_analysis_enabled": False
+        "fail_analysis_enabled": False,
+        "tolerances_dict": {}
     }
 
     for key, value in default.items():

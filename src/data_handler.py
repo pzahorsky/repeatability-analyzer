@@ -234,6 +234,45 @@ def prelim_failed_rows(data, metrics):
 
     st.session_state["fail_analysis_enabled"] = bool(failed_rows)
 
+def tolerances_elements(data):
+    sample_names = st.session_state["sample_vals"]
+    sample_name_col = st.session_state["Change_Sample_Value"]
+    element_col = st.session_state["Change_Element_Name"]
+
+    scoped = data[data[sample_name_col].isin(sample_names)].dropna()
+    
+    return (
+        scoped
+        .groupby(sample_name_col)[element_col]
+        .apply(lambda s: sorted(s.dropna().unique()))
+        .to_dict()
+    )
+
+def data_after_tolerances():
+    data = st.session_state["data"]
+    tolerances = st.session_state["tolerances_dict"]
+    sample_value_col = st.session_state["Change_Sample_Value"]
+    element_name_col = st.session_state["Change_Element_Name"]
+
+    data["target"] = None
+    data["usl"] = None
+    data["lsl"] = None
+
+    for idx, row in data.iterrows():
+        sample_value = row[sample_value_col]
+        element = row[element_name_col]
+
+        if sample_value in tolerances:
+            if element in tolerances[sample_value]:
+                data.at[idx, "target"] = tolerances[sample_value][element]["target"]
+                data.at[idx, "usl"] = tolerances[sample_value][element]["usl"]
+                data.at[idx, "lsl"] = tolerances[sample_value][element]["lsl"]
+
+    return data
+    
+
+
+
 def data_for_analysis(data, failed_rows):
     data_failed = data.loc[data.index.isin(list(failed_rows))]
     
