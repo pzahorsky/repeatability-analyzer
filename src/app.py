@@ -71,11 +71,12 @@ if state.has_value("data"):
     state.set_value("data", data)
 
 # ---> UI INIT
-viewer, columns, metrics, scope = ui_main.init_ui(
+viewer, columns, metrics, scope, prelim, tolerance = ui_main.init_ui(
     state.has_value("data"),
     state.get_value("rename_columns"),
     state.get_value("sidebar_pipeline_done"),
-    state.get_value("metrics_sel_done")
+    state.get_value("metrics_sel_done"),
+    state.get_value("scope_sel_done")
 )
 
 # ---> UI RENDER
@@ -97,43 +98,32 @@ if scope is not None:
         data = dh.data_after_scope(state.get_value("data")
                                    ,selected_elements)
         state.set_value("data", data)
-"""
-if "scope_sel_done" not in st.session_state:
-    st.session_state.scope_sel_done = False
-if "fail_analysis_enabled" not in st.session_state:
-    st.session_state.fail_analysis_enabled = False
-"""
+
+if prelim is not None:
+    metrics = state.get_value("metrics")
+    data = state.get_value("data")
+
+    data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
+    data = dh.analytics(data, metrics["metrics"])
+    state.set_value("data", data)
+
+    data_prelim = dh.data_prelim_results(data, metrics["metrics"])
+    state.set_value("data_prelim", data_prelim)
+    
+    dh.prelim_failed_rows(data_prelim, metrics["metrics"])
+    ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
+
+if tolerance is not None:
+    pass
 
 """
 # --- UI INIT ---
-scope, prelim, analysis, export = ui_main.init_ui(
-    scope_sel_done = st.session_state.scope_sel_done,
+analysis, export = ui_main.init_ui(
     fail_analysis_enabled = st.session_state.fail_analysis_enabled,
 )
 
 # --- UI RENDER ---
-   
-if scope is not None and components:
-        pins = dh.scope_pins(data,components)
-        if pins:
-            selected_pins = ui_main.render_scope(scope,pins)
-            data = dh.data_after_scope(data,selected_pins)
  
-if prelim is not None and selected_pins:
-    data = dh.usl_lsl_glob_per(data, enabled_metrics["limits"])
-    data = dh.analytics(data, enabled_metrics["metrics"])
-    data_for_prelim = dh.data_prelim_results(
-                                             data,
-                                             enabled_metrics["metrics"])
-    failed_rows = dh.prelim_failed_rows(data_for_prelim,
-                                        enabled_metrics["metrics"],
-                                    )
-    has_fails = bool(failed_rows)
-    st.session_state.fail_analysis_enabled = has_fails
-    ui_main.render_prelim_results(data_for_prelim,
-                                  enabled_metrics["metrics"],
-                                  prelim,
-                                  failed_rows)
 
 if analysis is not None and has_fails:
     data_failed = dh.data_for_analysis(data, failed_rows)

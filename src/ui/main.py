@@ -14,6 +14,7 @@ def init_ui(
         rename_columns: bool,
         sidebar_pipe_done: bool,
         metrics_done: bool,
+        scope_sel_done: bool
 ):
 
     tabs = []
@@ -26,9 +27,12 @@ def init_ui(
         tabs.append("📊 Metrics")
     if metrics_done:
         tabs.append("🔍 Scope")
+    if scope_sel_done:
+        tabs.append("📋 Prelim Results")
+        tabs.append("📏 Limits")
 
     if not tabs:
-        return None, None, None, None
+        return None, None, None, None, None, None
     
     created_tabs = st.tabs(tabs)
 
@@ -36,6 +40,8 @@ def init_ui(
     columns = None
     metrics = None
     scope = None
+    prelim = None
+    tolerance = None
 
     tab_num = 0
     if data_available:
@@ -54,9 +60,13 @@ def init_ui(
         with created_tabs[tab_num]:
             scope = st.container()
         tab_num += 1
-    
+    if scope_sel_done:
+        with created_tabs[tab_num]:
+            prelim = st.container()
+            tolerance = st.container()
+        tab_num += 2
 
-    return viewer, columns, metrics, scope
+    return viewer, columns, metrics, scope, prelim, tolerance
 
 """
 def init_ui(
@@ -152,16 +162,18 @@ def rename_columns(columns):
             st.session_state["Change_Algorithm"] = loaded.get("Algorithm", "")
             st.session_state["Change_Sample_Value"] = loaded.get("Sample Value", "")
             st.session_state["Change_Element_Id"] = loaded.get("Element Id", "")
+            st.session_state["Change_Element_Name"] = loaded.get("Change_Element_Name", "")
+            st.session_state["Change_Mean"] = loaded.get("Mean", "")
+            st.session_state["Change_StDev"] = loaded.get("StDev", "")
 
             del st.session_state["loaded_rename_config"]
 
     with columns:    
         static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])
-        static_text.subheader("Reference Column Name")
-        input_text.subheader("New Column Name")
-        static_text2.subheader("Reference Column Name")
-        input_text2.subheader("New Column Name")
-
+        static_text.markdown("**Reference Column Name**")
+        input_text.markdown("**New Column Name**")
+        static_text2.markdown("**Reference Column Name**")
+        input_text2.markdown("**New Column Name**")
         
         static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])  
         static_text.text("Sub-Board")
@@ -173,24 +185,35 @@ def rename_columns(columns):
                                value = "Element Id", 
                                label_visibility = "collapsed")
 
-        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])  
         static_text.text("Component")
         input_text.text_input("Component", key="Change_Component",
                                value = "Component", 
                                label_visibility = "collapsed")
-             
+        static_text2.text("Element Name")
+        input_text2.text_input("Element Name", key = "Change_Element_Name",
+                               value = "Element Name",
+                               label_visibility = "collapsed")
 
-        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])  
         static_text.text("Algorithm")
         input_text.text_input("Algorithm", key="Change_Algorithm",
                                value = "Algorithm Name", 
+                               label_visibility = "collapsed")
+        static_text2.text("Mean")
+        input_text2.text_input("Mean", key="Change_Mean",
+                               value = "Average",
                                label_visibility = "collapsed")      
 
-        static_text, input_text, rgap = st.columns([1,1,2])  
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])  
         static_text.text("Sample Value")
         input_text.text_input("Sample Value", key="Change_Sample_Value",
                                value = "Sample Name", 
                                label_visibility = "collapsed")
+        static_text2.text("Standard Deviation")
+        input_text2.text_input("StDev", key = "Change_StDev",
+                              value = "Standard Deviation",
+                              label_visibility = "collapsed")
         
         st.markdown("---")
 
@@ -208,7 +231,10 @@ def rename_columns(columns):
                 "Component": config.get("Component", ""),
                 "Algorithm": config.get("Algorithm", ""),
                 "Sample Value": config.get("Sample Value", ""),
-                "Element Id": config.get("Element Id", "")
+                "Element Id": config.get("Element Id", ""),
+                "Element Name": config.get("Element Name", ""),
+                "Mean": config.get("Mean", ""),
+                "StDev": config.get("StDev", "")
             }
             st.session_state["last_loaded_config_name"] = config_file.name
             st.rerun()
@@ -218,7 +244,10 @@ def rename_columns(columns):
             "Component": st.session_state.get("Change_Component", ""),
             "Algorithm": st.session_state.get("Change_Algorithm", ""),
             "Sample Value": st.session_state.get("Change_Sample_Value", ""),
-            "Element Id": st.session_state.get("Change_Element_Id", "")
+            "Element Id": st.session_state.get("Change_Element_Id", ""),
+            "Change_Element_Name": st.session_state.get("Change_Element_Name", ""),
+            "Mean": st.session_state.get("Change_Mean", ""),
+            "StDev": st.session_state.get("Change_StDev", "")
         }
 
         json_bytes = json.dumps(rename_map, indent=4).encode("utf-8")
@@ -419,18 +448,17 @@ def render_scope(scope, elements):
             st.markdown("---")
 
         st.session_state.scope_sel_done = any(selection_dict.values())
-        
 
         return selection_dict
 
-# -------------------
-# PRELIM RESULTS TAB 
-# -------------------
+# ---> PRELIM RESULTS <--- 
 
-def render_prelim_results(data, enabled_metrics, prelim, failed_rows):
+def render_prelim_results(data, enabled_metrics, prelim):
 
     if data is None:
         return
+
+    failed_rows = st.session_state["prelim_failed_rows"]
 
     n = len(data)
     height = min(40 + n * 35, 700)
@@ -443,7 +471,7 @@ def render_prelim_results(data, enabled_metrics, prelim, failed_rows):
 
         for i, col in enumerate(row.index):
             for m, enabled in enabled_metrics.items():
-                if enabled and col in ["Cp", "Cpk", "Cg", "Cgk"]:
+                if enabled and col in ["Cp_glob", "Cpk_glob", "Cg_glob", "Cgk_glob"]:
                     if row[col] < 1.33:
                         styles[i] = (
                             "background-color: rgba(231, 76, 60, 0.35);"
