@@ -114,6 +114,20 @@ if prelim is not None:
     dh.prelim_failed_rows(data_prelim, metrics["metrics"])
     ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
 
+# CURENTLY SET TO ANALYZE ONLY PRELIM DATA !!!
+if analysis is not None:
+    data_prelim = state.get_value("data_prelim")
+    failed_rows = state.get_value("prelim_failed_rows")
+    metrics = state.get_value("metrics")
+
+    data_prelim_failed = dh.data_for_analysis(data, failed_rows)
+    st.write(metrics["metrics"])
+    figs = plt.fail_analysis_plotter(data_prelim_failed, metrics["metrics"])
+    ui_main.render_fail_analysis(data_prelim_failed,
+                                 analysis,
+                                 figs,
+                                 metrics)
+
 if tolerance is not None:
     data = state.get_value("data")
     tol_elements = dh.tolerances_elements(data)

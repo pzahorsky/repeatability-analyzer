@@ -19,9 +19,17 @@ def fail_analysis_plotter(data, metrics):
     selector_cols = ["Sub-board", "Component", "Algorithm Name", 
                      "Sample Name", "Pin Id"]
     
+    metric_col_map = {
+    "cp": "Cp_glob",
+    "cpk": "Cpk_glob",
+    "cg": "Cg_glob",
+    "cgk": "Cgk_glob"
+}
+
     for metric, value in metrics.items():
         if value:
-            selector_cols.append(metric.capitalize())
+            selector_cols.append(metric_col_map[metric])
+    
 
     col_uniques = {
         col: sorted(data[col].unique())
@@ -171,10 +179,10 @@ def results_export_plotter(data, metrics):
         cp_values = None
         cpk_values = None
         
-        if metrics.get("cp"):
+        if metrics.get("Cp"):
             cp_values = data["Cp"].values
             values = cp_values
-        if metrics.get("cpk"):
+        if metrics.get("Cpk"):
             cpk_values = data["Cpk"].values
             if cp_values is None:
                 values = cpk_values
@@ -184,30 +192,30 @@ def results_export_plotter(data, metrics):
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # Threshold lines
-        if metrics.get("cp"):
+        if metrics.get("Cp"):
             ax.axhline(1.33, linestyle="--", 
                     label="Cp Acceptance Threshold",
                     color="#15db89",
                     linewidth = 1)
-        if metrics.get("cpk"):
+        if metrics.get("Cpk"):
             ax.axhline(1.67, linestyle=":", 
                     label="Cpk Acceptance Threshold",
                     color="seagreen",
                     linewidth = 2)
 
-        if metrics.get("cp"):
+        if metrics.get("Cp"):
             ax.scatter(x, cp_values, label="Cp",
                         color= "#2dd2d2")
             ax.set_title("Cp Overview – All Characteristics")
             ax.set_ylabel("Cp")
             
-        if metrics.get("cpk"):
+        if metrics.get("Cpk"):
             ax.scatter(x, cpk_values, label="Cpk",
                     color="#f7c96e")
             ax.set_title("Cpk Overview – All Characteristics")
             ax.set_ylabel("Cpk")
 
-        if metrics.get("cp") and metrics.get("cpk"):
+        if metrics.get("Cp") and metrics.get("Cpk"):
             ax.set_title("Cp/Cpk Overview – All Characteristics")
             ax.set_ylabel("Cp/Cpk")
 
