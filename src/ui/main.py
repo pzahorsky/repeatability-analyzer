@@ -226,11 +226,7 @@ def rename_columns(columns):
             st.rerun()
                    
 # ---> METRICS <---
-
 def render_metrics(metrics):
-
-    if "metrics_sel_done" not in st.session_state:
-        st.session_state.metrics_sel_done = False
     
     with metrics:
 
@@ -364,7 +360,6 @@ def render_metrics(metrics):
             st.session_state["metrics"] = None
      
 # ---> SCOPE <---
-
 def render_scope(scope, elements):
     with scope:
 
@@ -402,18 +397,37 @@ def render_scope(scope, elements):
             selection_dict[component] = selected_elements
             st.markdown("---")
 
-        st.session_state.scope_sel_done = any(selection_dict.values())
+        scope_selected = any(selection_dict.values())
+        scope_done = st.session_state["scope_sel_done"]
+
+        if not scope_done and scope_selected:
+            st.session_state["scope_sel_done"] = True
+            st.rerun()
+        
+        elif scope_done and not scope_selected:
+            st.session_state["scope_sel_done"] = False
+            st.session_state["fail_analysis_enabled"] = False
+            st.rerun()
+        
 
         return selection_dict
 
 # ---> PRELIM RESULTS <--- 
-
 def render_prelim_results(data, enabled_metrics, prelim):
 
     if data is None:
         return
 
     failed_rows = st.session_state["prelim_failed_rows"]
+    analysis_enabled = st.session_state["fail_analysis_enabled"]
+
+    if not analysis_enabled and failed_rows:
+        st.session_state["fail_analysis_enabled"] = True
+        st.rerun()
+
+    if analysis_enabled and not failed_rows:
+        st.session_state["fail_analysis_enabled"] = False
+        st.rerun()
 
     n = len(data)
     height = min(40 + n * 35, 700)
@@ -438,6 +452,8 @@ def render_prelim_results(data, enabled_metrics, prelim):
 
     with prelim:
         st.dataframe(styled_data, height=height)
+
+    
 
 # ---> FAIL ANALYSIS <---
 def render_fail_analysis(data, analysis, figs, metrics):

@@ -235,8 +235,6 @@ def prelim_failed_rows(data, metrics):
     
     st.session_state["prelim_failed_rows"] = failed_rows
 
-    st.session_state["fail_analysis_enabled"] = bool(failed_rows)
-
 def tolerances_elements(data):
     sample_names = st.session_state["sample_vals"]
     sample_name_col = st.session_state["Change_Sample_Value"]

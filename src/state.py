@@ -3,6 +3,10 @@ import streamlit as st
 def clear_states():
     st.session_state.clear()
 
+def reset_states(r_states):
+    for state, value in r_states.items():
+        st.session_state[state] = value
+
 def init_state():
     default = {
         "data": None,

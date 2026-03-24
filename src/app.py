@@ -90,6 +90,12 @@ if columns is not None:
 if metrics is not None:
     ui_main.render_metrics(metrics)
 
+    if not state.get_value("metrics_sel_done"):
+        state.reset_states({
+            "scope_sel_done" : False,
+            "fail_analysis_enabled": False
+        })
+
 if scope is not None:
     elements = dh.scope_elements(
         state.get_value("data"),
@@ -104,15 +110,16 @@ if prelim is not None:
     metrics = state.get_value("metrics")
     data = state.get_value("data")
 
-    data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
-    data = dh.analytics(data, metrics["metrics"])
-    state.set_value("data", data)
+    if metrics is not None:
+        data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
+        data = dh.analytics(data, metrics["metrics"])
+        state.set_value("data", data)
 
-    data_prelim = dh.data_prelim_results(data, metrics["metrics"])
-    state.set_value("data_prelim", data_prelim)
-    
-    dh.prelim_failed_rows(data_prelim, metrics["metrics"])
-    ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
+        data_prelim = dh.data_prelim_results(data, metrics["metrics"])
+        state.set_value("data_prelim", data_prelim)
+        
+        dh.prelim_failed_rows(data_prelim, metrics["metrics"])
+        ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
 
 # CURENTLY SET TO ANALYZE ONLY PRELIM DATA !!!
 if analysis is not None:
