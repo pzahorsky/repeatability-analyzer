@@ -120,7 +120,7 @@ def rename_columns(columns):
             st.session_state["Change_Algorithm"] = loaded.get("Algorithm", "")
             st.session_state["Change_Sample_Value"] = loaded.get("Sample Value", "")
             st.session_state["Change_Element_Id"] = loaded.get("Element Id", "")
-            st.session_state["Change_Element_Name"] = loaded.get("Change_Element_Name", "")
+            st.session_state["Change_Element_Name"] = loaded.get("Element Name", "")
             st.session_state["Change_Mean"] = loaded.get("Mean", "")
             st.session_state["Change_StDev"] = loaded.get("StDev", "")
 
