@@ -109,31 +109,37 @@ if scope is not None:
 if prelim is not None:
     metrics = state.get_value("metrics")
     data = state.get_value("data")
+    viewer_mode = "prelim"
 
     if metrics is not None:
         data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
         data = dh.analytics(data, metrics["metrics"])
         state.set_value("data", data)
 
-        data_prelim = dh.data_prelim_results(data, metrics["metrics"])
+        data_prelim = dh.data_prelim_results(data, metrics["metrics"],
+                                             viewer_mode)
         state.set_value("data_prelim", data_prelim)
         
-        dh.prelim_failed_rows(data_prelim, metrics["metrics"])
-        ui_main.render_prelim_results(data_prelim, metrics["metrics"], prelim)
-
+        prelim_failed_rows = dh.prelim_failed_rows(data_prelim, 
+                                                   metrics["metrics"],
+                                                   viewer_mode)
+        state.set_value("prelim_failed_rows", prelim_failed_rows)
+        ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
+                                      prelim, results, viewer_mode)
+"""
 # CURENTLY SET TO ANALYZE ONLY PRELIM DATA !!!
 if analysis is not None:
     data_prelim = state.get_value("data_prelim")
-    failed_rows = state.get_value("prelim_failed_rows")
+    prelim_failed_rows = state.get_value("prelim_failed_rows")
     metrics = state.get_value("metrics")
 
-    data_prelim_failed = dh.data_for_analysis(data, failed_rows)
+    data_prelim_failed = dh.data_for_analysis(data, prelim_failed_rows)
     figs = plt.fail_analysis_plotter(data_prelim_failed, metrics["metrics"])
     ui_main.render_fail_analysis(data_prelim_failed,
                                  analysis,
                                  figs,
                                  metrics)
-
+"""
 if tolerance is not None:
     data = state.get_value("data")
     tol_elements = dh.tolerances_elements(data)
@@ -143,10 +149,27 @@ if tolerance is not None:
     state.set_value("data", data)
 
 if results is not None:
-    pass
+    data = state.get_value("data")
+    data_prelim = state.get_value("data_prelim")
+    viewer_mode = "final"
+    
+    if state.get_value("tolerances_applied") is not None:
+        data_results = dh.data_prelim_results(data, metrics["metrics"],
+                                             viewer_mode)
+        failed_rows = dh.prelim_failed_rows(data_results, metrics["metrics"], 
+                                            viewer_mode)
+        state.set_value("failed_rows", failed_rows)
+        ui_main.render_prelim_results(data_results, metrics["metrics"], 
+                                      prelim, results, viewer_mode)
+    else:
+        viewer_mode = "prelim_in_final"
+        ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
+                                      prelim, results, viewer_mode)
+
 
 # CURENTLY SET TO EXPORT ONLY PRELIM DATA !!!
 if export is not None:
+    viewer_mode = "final"
     data_prelim = state.get_value("data_prelim")
     metrics = state.get_value("metrics")
 

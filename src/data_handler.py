@@ -177,7 +177,7 @@ def analytics(data, metrics):
 
 # ---> PRELIM RESULTS DATA FILTER <---
 
-def data_prelim_results(data, metrics):
+def data_prelim_results(data, metrics, viewer_mode):
     subboard_col = st.session_state["Change_Sub-Board"]
     component_col = st.session_state["Change_Component"]
     element_id_col = st.session_state["Change_Element_Id"]
@@ -189,25 +189,45 @@ def data_prelim_results(data, metrics):
 
     basic_columns = [subboard_col, component_col, element_id_col,
                      element_name_col, algorithm_col, sample_value_col,
-                     stdev_col, mean_col,"USL_glob", "LSL_glob"]
+                     stdev_col, mean_col]
     
+    if viewer_mode == "prelim":
+        basic_columns.append("USL_glob")
+        basic_columns.append("LSL_glob")
+    if viewer_mode == "final":
+        basic_columns.append("Usl")
+        basic_columns.append("Lsl")  
+
     data[element_id_col] = pd.to_numeric(data[element_id_col],
                                           errors="coerce").astype(int)
     
-    METRIC_COL_MAP = {
-        "cp": "Cp_glob",
-        "cpk": "Cpk_glob",
-        "cg": "Cg_glob",
-        "cgk": "Cgk_glob",
-    }
+    METRIC_COL_MAP = {}
+
+    if viewer_mode == "prelim":
+        METRIC_COL_MAP = {
+            "cp": "Cp_glob",
+            "cpk": "Cpk_glob",
+            "cg": "Cg_glob",
+            "cgk": "Cgk_glob",
+        }
+    elif viewer_mode == "final":
+        METRIC_COL_MAP = {
+            "cp": "Cp",
+            "cpk": "Cpk",
+            "cg": "Cg",
+            "cgk": "Cgk",
+        }
+    else:
+        return set()
     
-    for metric, value in metrics.items():
-        if value and metric in METRIC_COL_MAP:
-            basic_columns.append(METRIC_COL_MAP[metric])
+    if viewer_mode == "prelim" or viewer_mode == "final":
+        for metric, value in metrics.items():
+            if value and metric in METRIC_COL_MAP:
+                basic_columns.append(METRIC_COL_MAP[metric])
 
     return data[basic_columns]
 
-def prelim_failed_rows(data, metrics):
+def prelim_failed_rows(data, metrics, viewer_mode):
 
     LIMITS = {
         "cp": 1.33,
@@ -216,24 +236,37 @@ def prelim_failed_rows(data, metrics):
         "cgk": 1.33,
     }
 
-    METRIC_COL_MAP = {
-        "cp": "Cp_glob",
-        "cpk": "Cpk_glob",
-        "cg": "Cg_glob",
-        "cgk": "Cgk_glob",
-    }
+    METRIC_COL_MAP = {}
+
+    if viewer_mode == "prelim":
+        METRIC_COL_MAP = {
+            "cp": "Cp_glob",
+            "cpk": "Cpk_glob",
+            "cg": "Cg_glob",
+            "cgk": "Cgk_glob",
+        }
+    elif viewer_mode == "final":
+        METRIC_COL_MAP = {
+            "cp": "Cp",
+            "cpk": "Cpk",
+            "cg": "Cg",
+            "cgk": "Cgk",
+        }
+    else:
+        return set()
 
     failed_rows = set()
 
-    for idx, row in data.iterrows():
-        for m, enabled in metrics.items():
-            if not enabled or m not in METRIC_COL_MAP:
-                continue
-            if row[METRIC_COL_MAP[m]] < LIMITS[m]:
-                failed_rows.add(idx)
-                break
-    
-    st.session_state["prelim_failed_rows"] = failed_rows
+    if viewer_mode == "prelim" or viewer_mode == "final":
+        for idx, row in data.iterrows():
+            for m, enabled in metrics.items():
+                if not enabled or m not in METRIC_COL_MAP:
+                    continue
+                if row[METRIC_COL_MAP[m]] < LIMITS[m]:
+                    failed_rows.add(idx)
+                    break
+        
+        return failed_rows
 
 def tolerances_elements(data):
     sample_names = st.session_state["sample_vals"]
@@ -254,10 +287,13 @@ def data_after_tolerances():
     tolerances = st.session_state["tolerances_dict"]
     sample_value_col = st.session_state["Change_Sample_Value"]
     element_name_col = st.session_state["Change_Element_Name"]
+    mean_col = st.session_state["Change_Mean"]
+    stdev_col = st.session_state["Change_StDev"]
+    metrics = st.session_state["metrics"]["metrics"]
 
-    data["target"] = None
-    data["usl"] = None
-    data["lsl"] = None
+    data["Target"] = None
+    data["Usl"] = None
+    data["Lsl"] = None
 
     for idx, row in data.iterrows():
         sample_value = row[sample_value_col]
@@ -265,14 +301,48 @@ def data_after_tolerances():
 
         if sample_value in tolerances:
             if element in tolerances[sample_value]:
-                data.at[idx, "target"] = tolerances[sample_value][element]["target"]
-                data.at[idx, "usl"] = tolerances[sample_value][element]["usl"]
-                data.at[idx, "lsl"] = tolerances[sample_value][element]["lsl"]
+                data.at[idx, "Target"] = tolerances[sample_value][element]["target"]
+                data.at[idx, "Usl"] = tolerances[sample_value][element]["usl"]
+                data.at[idx, "Lsl"] = tolerances[sample_value][element]["lsl"]
+
+    def capability(usl,lsl,sigma):
+        return (usl - lsl) / (6 * sigma)
+    
+    def capability_k(usl,lsl,sigma,mean):
+        return pd.concat([
+            (usl - mean) / (3 * sigma),
+            (mean - lsl) / (3 * sigma)
+        ], axis=1).min(axis=1)
+
+    if data["Usl"] is not None and data["Lsl"] is not None:
+        sigma = data[stdev_col]
+        mean = data[mean_col]
+        usl = data["Usl"]
+        lsl = data["Lsl"]
+        del_cols = ["USL_glob", "LSL_glob"]
+        
+        if metrics["cp"] or metrics["cg"]:
+            cp_cg = capability(usl,lsl,sigma)
+            if metrics["cp"]:
+                data["Cp"] = cp_cg
+                del_cols.append("Cp_glob")
+            if metrics["cg"]:
+                data["Cg"] = cp_cg
+                del_cols.append("Cg_glob")
+
+        if metrics["cpk"] or metrics["cgk"]:
+            cpk_cgk = capability_k(usl,lsl,sigma,mean)
+            if metrics["cpk"]:
+                data["Cpk"] = cpk_cgk
+                del_cols.append("Cpk_glob")
+            if metrics["cgk"]:
+                data["Cgk"] = cpk_cgk
+                del_cols.append("Cgk_glob")
+
+        for col in del_cols:
+            del data[col]
 
     return data
-    
-
-
 
 def data_for_analysis(data, failed_rows):
     data_failed = data.loc[data.index.isin(list(failed_rows))]
@@ -295,7 +365,7 @@ def fail_extractor(data):
 
     sigma_all = np.std(values, ddof=1)
     cp_all = cp(usl, lsl, sigma_all)
-
+    
     rows = []
 
     for v in values:
@@ -321,6 +391,7 @@ def fail_extractor(data):
         .sort_values("Cp_delta", ascending=False)
         .reset_index(drop=True)
     )
+
     return impact_df
 
 

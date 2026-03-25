@@ -413,13 +413,20 @@ def render_scope(scope, elements):
         return selection_dict
 
 # ---> PRELIM RESULTS <--- 
-def render_prelim_results(data, enabled_metrics, prelim):
+def render_prelim_results(data, enabled_metrics, prelim, results, viewer_mode):
 
     if data is None:
         return
-
-    failed_rows = st.session_state["prelim_failed_rows"]
-    analysis_enabled = st.session_state["fail_analysis_enabled"]
+    
+    if viewer_mode == "prelim":
+        failed_rows = st.session_state["prelim_failed_rows"]
+        analysis_enabled = st.session_state["fail_analysis_enabled"]
+    elif viewer_mode == "final":
+        failed_rows = st.session_state["failed_rows"]
+        analysis_enabled = st.session_state["fail_analysis_enabled"]
+    elif viewer_mode == "prelim_in_final":
+        failed_rows = st.session_state["prelim_failed_rows"]
+        analysis_enabled = st.session_state["fail_analysis_enabled"]
 
     if not analysis_enabled and failed_rows:
         st.session_state["fail_analysis_enabled"] = True
@@ -450,10 +457,17 @@ def render_prelim_results(data, enabled_metrics, prelim):
 
     styled_data = data.style.apply(style_capability_row, axis=1)
 
-    with prelim:
-        st.dataframe(styled_data, height=height)
-
-    
+    if viewer_mode == "prelim":
+        with prelim:
+            st.dataframe(styled_data, height=height)
+    if viewer_mode == "final":
+        with results:
+            st.dataframe(styled_data, height=height)
+    if viewer_mode == "prelim_in_final":
+        with results:
+            st.subheader("Adittional Tolerances not applied"
+                     " - Showing Preliminary Results")
+            st.dataframe(styled_data, height=height)
 
 # ---> FAIL ANALYSIS <---
 def render_fail_analysis(data, analysis, figs, metrics):
@@ -488,8 +502,8 @@ def render_fail_analysis(data, analysis, figs, metrics):
             "Mean":mean_val,
             "StDev":stdev_val
         }
-
-        for metric, value in metrics.items():
+        
+        for metric, value in metrics["metrics"].items():
             if value:
                 metric = metric.capitalize()
                 calc_row[metric] = parts[count_row]
@@ -512,9 +526,14 @@ def render_fail_analysis(data, analysis, figs, metrics):
                     )
         return styles
 
-    
-
     with analysis:
+
+        data_input = st.radio("Data Input",
+                              options=["Preliminary", "Final"],
+                              horizontal=True,
+                              key = "analysis_data_input",
+                              label_visibility = "collapsed"
+                            )
 
         titles = list(figs.keys())
         n = len(titles)
@@ -663,8 +682,8 @@ def render_tolerances(tolerance, tol_elements):
                             lsl = target - delta
                     elif type == "%":
                         if target is not None and delta is not None:
-                            usl = target * (delta / 100)
-                            lsl = -target * (delta / 100)
+                            usl = target + target*(delta / 100)
+                            lsl = target - target*(delta / 100)
 
                     c4c4.text(f"{usl}")
                     c4c5.text(f"{lsl}")
@@ -687,9 +706,17 @@ def render_tolerances(tolerance, tol_elements):
                 "lsl" : lsl               
             }
 
-# -------------------
-#  FAIL ANALYSIS TAB 
-# -------------------
+    tolerances_applied = any(
+        element.get("usl") is not None and not pd.isna(element.get("usl")) and
+        element.get("lsl") is not None and not pd.isna(element.get("lsl"))
+        for sample in tolerances_dict.values()
+        for element in sample.values()
+        )
+    
+    if tolerances_applied:
+        st.session_state["tolerances_applied"] = tolerances_applied
+    else:
+        st.session_state["tolerances_applied"] = None
 
 
 # -------------------

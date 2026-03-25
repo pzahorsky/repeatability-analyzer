@@ -72,7 +72,7 @@ def fail_analysis_plotter(data, metrics):
         # --- IQR not found anything, highlight extremes (Cp killers proxy)
         if len(outliers) == 0 and len(values) >= 5:
             mu = float(np.mean(values))
-            sd = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+            sd = group["Standard Deviation"].iloc[0]
             if sd > 0:
                 z = np.abs((values - mu) / sd)
                 top_n = min(3, len(values))   # napr. top 3
@@ -122,7 +122,9 @@ def fail_analysis_plotter(data, metrics):
         lsl = group["LSL_glob"].iloc[0]
         usl = group["USL_glob"].iloc[0]
 
+        # ---> CHECK THIS AFTER AGAIN <---
         sd = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
+        sd_all = float(np.std(values, ddof=0)) if len(values) > 1 else 0.0
 
         # --- Tolerance Range ---
         ax.axvspan(lsl, usl, alpha=0.06, color="green", label="Spec window")
@@ -163,7 +165,7 @@ def fail_analysis_plotter(data, metrics):
                 "usl": usl,
                 "lsl": lsl,
                 "mean": mean_val,
-                "stdev":sd
+                "stdev":sd_all
             }
         }
 

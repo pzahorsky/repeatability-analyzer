@@ -30,9 +30,11 @@ def init_state():
         "metrics": None,
         "scope_sel_done": False,
         "prelim_failed_rows": None,
+        "failed_rows": None,
         "data_prelim": None,
         "fail_analysis_enabled": False,
-        "tolerances_dict": {}
+        "tolerances_dict": {},
+        "tolerances_applied": False
     }
 
     for key, value in default.items():
