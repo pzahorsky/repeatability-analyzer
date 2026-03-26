@@ -8,7 +8,95 @@ import report as rp
 
 
 # ---> UI INIT <---
+def init_ui():
+    tab_defs = [
+        {
+            "key": "viewer",
+            "label": "📑 Data Viewer",
+            "show": st.session_state.get("data_pipeline") is not None,
+        },
+        {
+            "key": "columns",
+            "label": "🛠️ Rename columns",
+            "show": st.session_state.get("rename_columns", False),
+        },
+        {
+            "key": "metrics",
+            "label": "📊 Metrics",
+            "show": st.session_state.get("sidebar_pipeline_done", False),
+        },
+        {
+            "key": "scope",
+            "label": "🔍 Scope",
+            "show": st.session_state.get("metrics_sel_done", False),
+        },
+        {
+            "key": "prelim",
+            "label": "📋 Prelim Results",
+            "show": st.session_state.get("scope_sel_done", False),
+        },
+        {
+            "key": "analysis",
+            "label": "⚠️ Fail Analysis",
+            "show": st.session_state.get("fail_analysis_enabled", False),
+        },
+        {
+            "key": "tolerance",
+            "label": "📏 Tolerances",
+            "show": st.session_state.get("scope_sel_done", False),
+        },
+        {
+            "key": "results",
+            "label": "📈 Results",
+            "show": st.session_state.get("scope_sel_done", False),
+        },
+        {
+            "key": "export",
+            "label": "💾 Export Results",
+            "show": st.session_state.get("scope_sel_done", False),
+        },
+    ]
 
+    visible_tabs = [tab for tab in tab_defs if tab["show"]]
+
+    if not visible_tabs:
+        return {
+            "viewer": None,
+            "columns": None,
+            "metrics": None,
+            "scope": None,
+            "prelim": None,
+            "analysis": None,
+            "tolerance": None,
+            "results": None,
+            "export": None,
+        }
+
+    tab_labels = [tab["label"] for tab in visible_tabs]
+    created_tabs = st.tabs(tab_labels)
+
+    ui = {
+        "viewer": None,
+        "columns": None,
+        "metrics": None,
+        "scope": None,
+        "prelim": None,
+        "analysis": None,
+        "tolerance": None,
+        "results": None,
+        "export": None,
+    }
+
+    for tab_def, tab_obj in zip(visible_tabs, created_tabs):
+        with tab_obj:
+            if tab_def["key"] == "viewer":
+                ui["viewer"] = st.empty()
+            else:
+                ui[tab_def["key"]] = st.container()
+
+    return ui
+
+"""
 def init_ui(
         data_available: bool,
         rename_columns: bool,
@@ -16,7 +104,7 @@ def init_ui(
         metrics_done: bool,
         scope_sel_done: bool,
         analysis_enabled: bool
-):
+):  
 
     tabs = []
 
@@ -93,7 +181,7 @@ def init_ui(
         tab_num += 1
 
     return viewer, columns, metrics, scope, prelim, analysis, tolerance, results, export
-
+"""
 
 # ---> DATA VIEWER <---
 def render_view(viewer, data):
@@ -350,6 +438,9 @@ def render_metrics(metrics):
         metrics_dict["glob_limits"]["USL"] = tolerance_usl
         metrics_dict["glob_limits"]["LSL"] = tolerance_lsl
 
+        st.session_state["metrics"] = metrics_dict
+
+        """    
         metrics_selected = any(metrics_dict["metrics"].values())
 
         st.session_state.metrics_sel_done = metrics_selected
@@ -358,7 +449,7 @@ def render_metrics(metrics):
             st.session_state["metrics"] = metrics_dict
         else:
             st.session_state["metrics"] = None
-     
+     """
 # ---> SCOPE <---
 def render_scope(scope, elements):
     with scope:
@@ -409,7 +500,6 @@ def render_scope(scope, elements):
             st.session_state["fail_analysis_enabled"] = False
             st.rerun()
         
-
         return selection_dict
 
 # ---> PRELIM RESULTS <--- 

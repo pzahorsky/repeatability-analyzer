@@ -10,6 +10,11 @@ def reset_states(r_states):
 def init_state():
     default = {
         "data": None,
+        "data_loaded": None,
+        "data_pipeline": None,
+        "data_scope": None,
+        "data_prelim": None,
+        "data_tolerances": None,
         "subboards": None,
         "components": None,
         "algorithms": None,
@@ -29,12 +34,15 @@ def init_state():
         "metrics_sel_done": False,
         "metrics": None,
         "scope_sel_done": False,
+        "prelim_active": False,
         "prelim_failed_rows": None,
         "failed_rows": None,
-        "data_prelim": None,
         "fail_analysis_enabled": False,
+        "tolerances_active": False,
         "tolerances_dict": {},
-        "tolerances_applied": False
+        "tolerances_applied": False,
+        "results_active": False,
+        "export_active": False
     }
 
     for key, value in default.items():
@@ -49,4 +57,35 @@ def get_value(key):
 
 def has_value(key):
     return st.session_state.get(key) is not None
+
+def reset_downstream(state_key):
+    app_flow = [
+        "sidebar_pipeline_done",
+        "metrics_sel_done",
+        "prelim_active",
+        "fail_analysis_enabled",
+        "tolerances_active",
+        "results_active",
+        "export_active"
+    ]
+
+    defaults = {
+        "sidebar_pipeline_done": False,
+        "metrics_sel_done": False,
+        "prelim_active": False,
+        "fail_analysis_enabled": False,
+        "tolerances_active": False,
+        "results_active": False,
+        "export_active": False
+    }
+
+    if state_key not in app_flow:
+        return
+    
+    flow_index = app_flow.index(state_key)
+
+    for key in app_flow[flow_index + 1]:
+        if key in defaults:
+            st.session_state[key] = defaults[key]
+
 
