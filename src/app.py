@@ -6,6 +6,8 @@ import ui.main as ui_main
 import data_handler as dh
 import plotter as plt
 
+
+
 # ---> APP STATE INIT <---
 state.init_state()
 
@@ -72,17 +74,6 @@ if state.has_value("data_loaded"):
 
 # ---> UI INIT
 ui = ui_main.init_ui()
-"""
-# ---> UI INIT
-metrics, scope, prelim, analysis, tolerance, results, export = ui_main.init_ui(
-    
-    
-    state.get_value("sidebar_pipeline_done"),
-    state.get_value("metrics_sel_done"),
-    state.get_value("scope_sel_done"),
-    state.get_value("fail_analysis_enabled")
-)
-"""
 
 if ui["viewer"] is not None:
     ui_main.render_view(ui["viewer"], state.get_value("data_pipeline"))
@@ -137,34 +128,46 @@ if ui["analysis"] is not None:
                                  ui["analysis"],
                                  figs,
                                  metrics)
-
+st.write("RUN START:", st.session_state.get("tolerances_applied"))
 if ui["tolerance"] is not None:
     data = state.get_value("data_prelim")
     tol_elements = dh.tolerances_elements(data)
+
+    tolerances_applied = ui_main.render_tolerances(ui["tolerance"], 
+                                                   tol_elements)
+    state.set_value("tolerances_applied", tolerances_applied)
     
-    ui_main.render_tolerances(ui["tolerance"], tol_elements)
-    data = dh.data_after_tolerances()
-    state.set_value("data_tolerances", data)
+    if tolerances_applied:    
+        data = dh.data_after_tolerances()
+        state.set_value("data_tolerances", data)
 
 if ui["results"] is not None:
-    data_final = state.get_value("data_tolerances")
     data_prelim = state.get_value("data_prelim")
-    viewer_mode = "final"
 
-    if state.get_value("tolerances_applied") is not None:
+    if state.get_value("tolerances_applied"):
+        viewer_mode = "final"
+
+        data_final = state.get_value("data_tolerances")
         data_final = dh.data_prelim_results(data_final, metrics["metrics"],
                                              viewer_mode)
         failed_rows = dh.prelim_failed_rows(data_final, metrics["metrics"], 
                                             viewer_mode)
         state.set_value("failed_rows", failed_rows)
+        state.set_value("data_tolerances", data_final)
+
+        
         ui_main.render_prelim_results(data_final, metrics["metrics"], 
                                       ui["prelim"], ui["results"],
                                       viewer_mode)
+        
     else:
         viewer_mode = "prelim_in_final"
+
+        data_final = state.get_value("data_prelim")
         ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
+
 
 # CURENTLY SET TO EXPORT ONLY PRELIM DATA !!!
 if ui["export"] is not None:

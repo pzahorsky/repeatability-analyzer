@@ -518,6 +518,7 @@ def render_prelim_results(data, enabled_metrics, prelim, results, viewer_mode):
         failed_rows = st.session_state["prelim_failed_rows"]
         analysis_enabled = st.session_state["fail_analysis_enabled"]
 
+    """
     if not analysis_enabled and failed_rows:
         st.session_state["fail_analysis_enabled"] = True
         st.rerun()
@@ -525,7 +526,8 @@ def render_prelim_results(data, enabled_metrics, prelim, results, viewer_mode):
     if analysis_enabled and not failed_rows:
         st.session_state["fail_analysis_enabled"] = False
         st.rerun()
-
+"""
+        
     n = len(data)
     height = min(40 + n * 35, 700)
 
@@ -687,7 +689,6 @@ def render_fail_analysis(data, analysis, figs, metrics):
             st.dataframe(data_fail_extracted,
                          hide_index=True)
 
-
 # ---> TOLERANCES <---
 def render_tolerances(tolerance, tol_elements):
 
@@ -714,6 +715,7 @@ def render_tolerances(tolerance, tol_elements):
                 tolerances_dict[sample_name] = {}
 
             elements = [e for e in element]
+            
             key_select = f"select_{sample_name}"
             key_radio = f"radio_{sample_name}"
             key_target = f"target_{sample_name}"
@@ -803,12 +805,11 @@ def render_tolerances(tolerance, tol_elements):
         for element in sample.values()
         )
     
-    if tolerances_applied:
+
+    if st.session_state.get("tolerances_applied") != tolerances_applied:
         st.session_state["tolerances_applied"] = tolerances_applied
-    else:
-        st.session_state["tolerances_applied"] = None
 
-
+    return tolerances_applied
 # -------------------
 # EXPORT RESULTS TAB 
 # -------------------
