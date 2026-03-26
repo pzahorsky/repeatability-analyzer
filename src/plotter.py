@@ -3,28 +3,63 @@ import re
 import streamlit as st
 import numpy as np
 
-def fail_analysis_plotter(data, metrics):
+def fail_analysis_plotter(data, metrics, mode):
 
-    cols = ["Sub-board", "Component", "Algorithm Name", 
-                  "Sample Name", "Pin Id", "Standard Deviation",
-                  "Average", "USL_glob", "LSL_glob"]
+    col_subboard = st.session_state["Change_Sub-Board"]
+    col_component = st.session_state["Change_Component"]
+    col_algorithm = st.session_state["Change_Algorithm"] 
+    col_sampleval = st.session_state["Change_Sample_Value"] 
+    col_elementid = st.session_state["Change_Element_Id"]
+    col_stdev = st.session_state["Change_Mean"] 
+    col_mean = st.session_state["Change_StDev"]
+    col_samples = st.session_state["Change_Samples"] 
 
-    sample_value_reg = r"Sample Value \d+"
+    cols = [col_subboard, col_component, col_algorithm, 
+            col_sampleval, col_elementid, col_stdev,
+            col_mean]
+    
+    metric_col_map = {}
+
+    usl_col = None
+    lsl_col = None
+
+    if mode == "Preliminary":
+        cols += ["USL_glob","LSL_glob"]
+        
+        metric_col_map = {
+            "cp": "Cp_glob",
+            "cpk": "Cpk_glob",
+            "cg": "Cg_glob",
+            "cgk": "Cgk_glob"
+        }
+
+        usl_col = "USL_glob"
+        lsl_col = "LSL_glob"
+
+    elif mode == "Final":
+        cols += ["Usl", "Lsl"]
+
+        metric_col_map = {
+            "cp": "Cp",
+            "cpk": "Cpk",
+            "cg": "Cg",
+            "cgk": "Cgk"
+        }
+
+        usl_col = "Usl"
+        lsl_col = "Lsl"
+
+    sample_value_reg = rf"{col_samples} \d+"
 
     sample_value_cols = [
         col for col in data.columns if re.search(sample_value_reg, col)]
     
     cols += sample_value_cols
 
-    selector_cols = ["Sub-board", "Component", "Algorithm Name", 
-                     "Sample Name", "Pin Id"]
+    selector_cols = [col_subboard, col_component, col_algorithm, 
+                     col_sampleval, col_elementid]
     
-    metric_col_map = {
-    "cp": "Cp_glob",
-    "cpk": "Cpk_glob",
-    "cg": "Cg_glob",
-    "cgk": "Cgk_glob"
-}
+
 
     for metric, value in metrics.items():
         if value:
@@ -72,7 +107,7 @@ def fail_analysis_plotter(data, metrics):
         # --- IQR not found anything, highlight extremes (Cp killers proxy)
         if len(outliers) == 0 and len(values) >= 5:
             mu = float(np.mean(values))
-            sd = group["Standard Deviation"].iloc[0]
+            sd = group[col_stdev].iloc[0]
             if sd > 0:
                 z = np.abs((values - mu) / sd)
                 top_n = min(3, len(values))   # napr. top 3
@@ -119,8 +154,8 @@ def fail_analysis_plotter(data, metrics):
     # <<< ADDED
 
         # --- Limits ---
-        lsl = group["LSL_glob"].iloc[0]
-        usl = group["USL_glob"].iloc[0]
+        lsl = group[lsl_col].iloc[0]
+        usl = group[usl_col].iloc[0]
 
         # ---> CHECK THIS AFTER AGAIN <---
         sd = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0

@@ -282,8 +282,9 @@ def tolerances_elements(data):
         .to_dict()
     )
 
-def data_after_tolerances():
-    data = st.session_state["data"]
+def data_after_tolerances(data):
+    
+    data = data.copy()
     tolerances = st.session_state["tolerances_dict"]
     sample_value_col = st.session_state["Change_Sample_Value"]
     element_name_col = st.session_state["Change_Element_Name"]
@@ -292,8 +293,9 @@ def data_after_tolerances():
     metrics = st.session_state["metrics"]["metrics"]
 
     data["Target"] = None
-    data["Usl"] = None
-    data["Lsl"] = None
+
+    if "Target" not in data.columns:
+        data["Target"] = None
 
     for idx, row in data.iterrows():
         sample_value = row[sample_value_col]
@@ -319,32 +321,37 @@ def data_after_tolerances():
         mean = data[mean_col]
         usl = data["Usl"]
         lsl = data["Lsl"]
-        del_cols = ["USL_glob", "LSL_glob"]
         
         if metrics["cp"] or metrics["cg"]:
             cp_cg = capability(usl,lsl,sigma)
             if metrics["cp"]:
                 data["Cp"] = cp_cg
-                del_cols.append("Cp_glob")
             if metrics["cg"]:
                 data["Cg"] = cp_cg
-                del_cols.append("Cg_glob")
 
         if metrics["cpk"] or metrics["cgk"]:
             cpk_cgk = capability_k(usl,lsl,sigma,mean)
             if metrics["cpk"]:
                 data["Cpk"] = cpk_cgk
-                del_cols.append("Cpk_glob")
             if metrics["cgk"]:
                 data["Cgk"] = cpk_cgk
-                del_cols.append("Cgk_glob")
-
-        for col in del_cols:
-            del data[col]
 
     return data
 
+def data_tolerances_analytics(data_tolerances, data_sample_values):
+    col_sample = st.session_state["Change_Samples"]
+    
+    data = pd.concat(
+                [data_tolerances, 
+                 data_sample_values.filter(regex=fr"{col_sample} \d+")],
+                 axis=1
+)
+    return data
+
 def data_for_analysis(data, failed_rows):
+    
+    st.write(str(type(failed_rows)))
+
     data_failed = data.loc[data.index.isin(list(failed_rows))]
     
     return data_failed

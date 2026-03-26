@@ -497,8 +497,7 @@ def render_scope(scope, elements):
         
         elif scope_done and not scope_selected:
             st.session_state["scope_sel_done"] = False
-            st.session_state["fail_analysis_enabled"] = False
-            st.rerun()
+            #st.rerun()
         
         return selection_dict
 
@@ -510,23 +509,16 @@ def render_prelim_results(data, enabled_metrics, prelim, results, viewer_mode):
     
     if viewer_mode == "prelim":
         failed_rows = st.session_state["prelim_failed_rows"]
-        analysis_enabled = st.session_state["fail_analysis_enabled"]
+        if failed_rows:
+            st.session_state["fail_analysis_enabled"] = True
+        else:
+            st.session_state["fail_analysis_enabled"] = False
     elif viewer_mode == "final":
         failed_rows = st.session_state["failed_rows"]
         analysis_enabled = st.session_state["fail_analysis_enabled"]
     elif viewer_mode == "prelim_in_final":
         failed_rows = st.session_state["prelim_failed_rows"]
         analysis_enabled = st.session_state["fail_analysis_enabled"]
-
-    """
-    if not analysis_enabled and failed_rows:
-        st.session_state["fail_analysis_enabled"] = True
-        st.rerun()
-
-    if analysis_enabled and not failed_rows:
-        st.session_state["fail_analysis_enabled"] = False
-        st.rerun()
-"""
         
     n = len(data)
     height = min(40 + n * 35, 700)
@@ -569,6 +561,9 @@ def render_fail_analysis(data, analysis, figs, metrics):
     
     def title_to_df(title: str) -> pd.DataFrame:
         parts = [p.strip() for p in title.split(" - ")]
+        
+        mean_col = st.session_state["Change_Mean"]
+        stdev_col = st.session_state["Change_StDev"]
 
         info_row = {
             "Sub-board": int(parts[0]),
@@ -576,7 +571,7 @@ def render_fail_analysis(data, analysis, figs, metrics):
             "Algorithm": parts[2],
             "Output": parts[3],
             "Pin Id": int(float(parts[4])),
-        }
+        } 
 
         data_cop = data.copy()
 
@@ -587,8 +582,8 @@ def render_fail_analysis(data, analysis, figs, metrics):
                 col = "Sample Name"
             data_cop = data_cop[data_cop[col] == val]
 
-        mean_val = data_cop["Average"].iloc[0]
-        stdev_val = data_cop["Standard Deviation"] .iloc[0]
+        mean_val = data_cop[mean_col].iloc[0]
+        stdev_val = data_cop[stdev_col] .iloc[0]
         count_row = 5
         calc_row = {
             "Mean":mean_val,
@@ -620,12 +615,9 @@ def render_fail_analysis(data, analysis, figs, metrics):
 
     with analysis:
 
-        data_input = st.radio("Data Input",
-                              options=["Preliminary", "Final"],
-                              horizontal=True,
-                              key = "analysis_data_input",
-                              label_visibility = "collapsed"
-                            )
+        if figs is None or len(figs) == 0:
+            st.warning("No data for analysis")
+            return
 
         titles = list(figs.keys())
         n = len(titles)
@@ -638,6 +630,7 @@ def render_fail_analysis(data, analysis, figs, metrics):
         fig = plot["fig"]
         ctx = plot["data"]
 
+        # COUNTS ONLY WITH ONE OUTLIER VALUE
         data_fail_extracted = dh.fail_extractor(ctx)
 
         c1, c2 = st.columns([5.5, 4.5])

@@ -101,8 +101,9 @@ if ui["prelim"] is not None:
 
     if metrics is not None:
         data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
+        state.set_value("data_before_analytics", data)
         data = dh.analytics(data, metrics["metrics"])
-        state.set_value("data", data)
+        state.set_value("data_analytics", data)
 
         data_prelim = dh.data_prelim_results(data, metrics["metrics"],
                                              viewer_mode)
@@ -118,19 +119,60 @@ if ui["prelim"] is not None:
 
 # CURENTLY SET TO ANALYZE ONLY PRELIM DATA !!!        
 if ui["analysis"] is not None:
-    data_prelim = state.get_value("data_prelim")
-    prelim_failed_rows = state.get_value("prelim_failed_rows")
-    metrics = state.get_value("metrics")
+    with ui["analysis"]:
+        st.radio("Data Input",
+                 options=["Preliminary", "Final"],
+                 horizontal=True,
+                 key = "analysis_mode",
+                 label_visibility = "collapsed"
+                )
 
-    data_prelim_failed = dh.data_for_analysis(data, prelim_failed_rows)
-    figs = plt.fail_analysis_plotter(data_prelim_failed, metrics["metrics"])
-    ui_main.render_fail_analysis(data_prelim_failed,
+    mode = state.get_value("analysis_mode")
+    metrics = state.get_value("metrics")
+    
+    if mode == "Preliminary":
+        data_analytics = state.get_value("data_analytics")
+        data_prelim = state.get_value("data_prelim")
+        prelim_failed_rows = state.get_value("prelim_failed_rows")
+
+        data_prelim_failed = dh.data_for_analysis(data_analytics, 
+                                                  prelim_failed_rows)
+        figs = plt.fail_analysis_plotter(data_prelim_failed, metrics["metrics"],
+                                         mode)
+        ui_main.render_fail_analysis(data_prelim_failed,
                                  ui["analysis"],
                                  figs,
                                  metrics)
-st.write("RUN START:", st.session_state.get("tolerances_applied"))
+    
+    elif mode == "Final":
+        data_analytics_tolerances = state.get_value("data_tolerances_analytics")
+        data_final = state.get_value("data_tolerances")
+        final_failed_rows = state.get_value("failed_rows")
+        
+        if data_analytics_tolerances is not None:
+            data_final_failed = dh.data_for_analysis(data_analytics_tolerances,
+                                                     final_failed_rows)
+            figs = plt.fail_analysis_plotter(data_final_failed, metrics["metrics"],
+                                             mode)
+            ui_main.render_fail_analysis(data_final_failed,
+                                     ui["analysis"],
+                                     figs,
+                                     metrics)
+        else:
+            st.subheader("No tolerances applied")
+
 if ui["tolerance"] is not None:
-    data = state.get_value("data_prelim")
+    data_for_analytics = state.get_value("data_before_analytics")
+
+    if state.get_value("data_tolerances") is None:
+        data = data_for_analytics.copy()
+        data = data.rename(columns={
+            "USL_glob": "Usl",
+            "LSL_glob": "Lsl"
+        })
+    else: 
+        data = state.get_value("data_tolerances").copy()
+
     tol_elements = dh.tolerances_elements(data)
 
     tolerances_applied = ui_main.render_tolerances(ui["tolerance"], 
@@ -138,8 +180,11 @@ if ui["tolerance"] is not None:
     state.set_value("tolerances_applied", tolerances_applied)
     
     if tolerances_applied:    
-        data = dh.data_after_tolerances()
+        data = dh.data_after_tolerances(data)
         state.set_value("data_tolerances", data)
+
+        data = dh.data_tolerances_analytics(data, data_for_analytics)
+        state.set_value("data_tolerances_analytics", data)
 
 if ui["results"] is not None:
     data_prelim = state.get_value("data_prelim")
@@ -180,7 +225,18 @@ if ui["export"] is not None:
                                   export_plot, 
                                   ui["export"], 
                                   metrics["metrics"])
-      
+
+# STATES DEBUG
+"""
+st.write({
+    "data_pipeline": st.session_state.get("data_pipeline"),
+    "rename_columns": st.session_state.get("rename_columns"),
+    "sidebar_pipeline_done": st.session_state.get("sidebar_pipeline_done"),
+    "metrics_sel_done": st.session_state.get("metrics_sel_done"),
+    "scope_sel_done": st.session_state.get("scope_sel_done"),
+    "fail_analysis_enabled": st.session_state.get("fail_analysis_enabled"),
+})
+  """    
 
 
 
