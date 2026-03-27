@@ -283,8 +283,10 @@ def rename_columns(columns):
         if close_tab:
             if not st.session_state.get("rename_columns_valid", False):
                 st.error("Cannot close configurator. Some mappings are empty or missing in dataset.")
+                st.stop()
             else:
                 st.session_state["rename_columns"] = False
+                st.session_state["rename_columns_confirmed"] = True
                 st.session_state["last_loaded_config_name"] = None
                 st.rerun()
                    

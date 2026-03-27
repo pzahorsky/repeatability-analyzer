@@ -46,7 +46,8 @@ def init_state():
         "tolerances_dict": {},
         "tolerances_applied": False,
         "results_active": False,
-        "export_active": False
+        "export_active": False,
+        "rename_columns_valid": False
     }
 
     for key, value in default.items():

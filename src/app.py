@@ -34,43 +34,47 @@ if state.has_value("data_loaded"):
 
     data = state.get_value("data_loaded")
 
-    state.set_value("sidebar_pipeline_done", False)
+    if not state.get_value("rename_columns_confirmed"):
+        state.set_value("sidebar_pipeline_done", False)
+        state.set_value("data_pipeline", data)
+        st.info("🔧 Confirm column mapping to continue.")
+    else:
+        state.set_value("sidebar_pipeline_done", False)
+        subboards = ui_side.subboard_selector(
+                        dh.get_subboards(data)
+                        )
+        state.set_value("subboards", subboards)
 
-    subboards = ui_side.subboard_selector(
-                    dh.get_subboards(data)
-                    )
-    state.set_value("subboards", subboards)
+        if subboards:
+            data = dh.subboards_selected(data, subboards)
 
-    if subboards:
-        data = dh.subboards_selected(data, subboards)
-
-        components = ui_side.component_selector(
-                    dh.get_components(data)
-        )
-        state.set_value("components", components)
-
-        if components:
-            data = dh.components_selected(data, components)
-
-            algorithms = ui_side.algorithm_selector(
-                dh.get_algorithms(data)
+            components = ui_side.component_selector(
+                        dh.get_components(data)
             )
-            state.set_value("algorithms", algorithms)
+            state.set_value("components", components)
 
-            if algorithms:
-                data = dh.algorithms_selected(data, algorithms)
+            if components:
+                data = dh.components_selected(data, components)
 
-                sample_vals = ui_side.sample_val_selector(
-                    dh.get_sample_vals(data)
+                algorithms = ui_side.algorithm_selector(
+                    dh.get_algorithms(data)
                 )
-                state.set_value("sample_vals", sample_vals)
+                state.set_value("algorithms", algorithms)
 
-                if sample_vals:
-                    data = dh.sample_vals_selected(data, sample_vals)
+                if algorithms:
+                    data = dh.algorithms_selected(data, algorithms)
 
-                    state.set_value("sidebar_pipeline_done", True)
-    
-    state.set_value("data_pipeline", data)
+                    sample_vals = ui_side.sample_val_selector(
+                        dh.get_sample_vals(data)
+                    )
+                    state.set_value("sample_vals", sample_vals)
+
+                    if sample_vals:
+                        data = dh.sample_vals_selected(data, sample_vals)
+
+                        state.set_value("sidebar_pipeline_done", True)
+        
+        state.set_value("data_pipeline", data)
 
 # ---> UI INIT
 ui = ui_main.init_ui()
@@ -79,7 +83,9 @@ if ui["viewer"] is not None:
     ui_main.render_view(ui["viewer"], state.get_value("data_pipeline"))
 
 if ui["columns"] is not None:
-    ui_main.rename_columns(ui["columns"])
+    if ui_main.rename_columns(ui["columns"]):
+        state.set_value("rename_columns", True)
+        state.set_value("rename_columns_confirmed", False)
 
 if ui["metrics"] is not None:
     ui_main.render_metrics(ui["metrics"])
@@ -213,8 +219,6 @@ if ui["results"] is not None:
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
 
-
-# CURENTLY SET TO EXPORT ONLY PRELIM DATA !!!
 if ui["export"] is not None:
     metrics = state.get_value("metrics")
     
