@@ -349,9 +349,6 @@ def data_tolerances_analytics(data_tolerances, data_sample_values):
     return data
 
 def data_for_analysis(data, failed_rows):
-    
-    st.write(str(type(failed_rows)))
-
     data_failed = data.loc[data.index.isin(list(failed_rows))]
     
     return data_failed

@@ -206,9 +206,24 @@ def fail_analysis_plotter(data, metrics, mode):
 
     return plots
 
-def results_export_plotter(data, metrics):
+def results_export_plotter(data, metrics, mode):
 
     fig = None
+
+    if mode == "Preliminary":
+        
+        rename_col_map = {
+            "cp": "Cp_glob",
+            "cpk": "Cpk_glob",
+            "cg": "Cg_glob",
+            "cgk": "Cgk_glob",
+            "Usl" : "USL_glob",
+            "Lsl" : "LSL_glob"
+        }
+
+        for col, col_name in rename_col_map.items():
+            if col_name in data.columns:
+                data.rename(columns = {col_name: col}, inplace = True)
 
     def cp_cpk_plotter(data, metrics):
 
@@ -217,10 +232,10 @@ def results_export_plotter(data, metrics):
         cpk_values = None
         
         if metrics.get("cp"):
-            cp_values = data["Cp_glob"].values
+            cp_values = data["Cp"].values
             values = cp_values
         if metrics.get("cpk"):
-            cpk_values = data["Cpk_glob"].values
+            cpk_values = data["Cpk"].values
             if cp_values is None:
                 values = cpk_values
 
@@ -229,30 +244,30 @@ def results_export_plotter(data, metrics):
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # Threshold lines
-        if metrics.get("Cp"):
+        if metrics.get("cp"):
             ax.axhline(1.33, linestyle="--", 
                     label="Cp Acceptance Threshold",
                     color="#15db89",
                     linewidth = 1)
-        if metrics.get("Cpk"):
+        if metrics.get("cpk"):
             ax.axhline(1.67, linestyle=":", 
-                    label="Cpk Acceptance Threshold",
+                    label="cpk Acceptance Threshold",
                     color="seagreen",
                     linewidth = 2)
 
-        if metrics.get("Cp"):
+        if metrics.get("cp"):
             ax.scatter(x, cp_values, label="Cp",
                         color= "#2dd2d2")
             ax.set_title("Cp Overview – All Characteristics")
             ax.set_ylabel("Cp")
             
-        if metrics.get("Cpk"):
+        if metrics.get("cpk"):
             ax.scatter(x, cpk_values, label="Cpk",
                     color="#f7c96e")
             ax.set_title("Cpk Overview – All Characteristics")
             ax.set_ylabel("Cpk")
 
-        if metrics.get("Cp") and metrics.get("Cpk"):
+        if metrics.get("cp") and metrics.get("cpk"):
             ax.set_title("Cp/Cpk Overview – All Characteristics")
             ax.set_ylabel("Cp/Cpk")
 
@@ -270,10 +285,10 @@ def results_export_plotter(data, metrics):
         cgk_values = None
         
         if metrics.get("cg"):
-            cg_values = data["Cg"].values
+            cg_values = data["cg"].values
             values = cg_values
         if metrics.get("cgk"):
-            cgk_values = data["Cgk"].values
+            cgk_values = data["cgk"].values
             if cg_values is None:
                 values = cgk_values
 

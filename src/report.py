@@ -12,6 +12,7 @@ from reportlab.platypus import (
 )
 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_JUSTIFY 
 from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.lib.pagesizes import A4, landscape
@@ -21,6 +22,7 @@ import io
 import re
 import matplotlib.pyplot as plt
 import pandas as pd
+import streamlit as st
 
 ### Title Header - Helper func ###
 def metrics_label(metrics):
@@ -49,11 +51,71 @@ def metrics_label(metrics):
 
 ### Title Header ###
 def build_header_title(story, styles, metrics, customer, product):
-
+    
     story.append(
         Paragraph(
             f"{metrics_label(metrics)} Report for {customer} - {product}",
             styles["Title"]
+        )
+    )
+
+def metrics_subheader(metrics):
+    
+    cp = metrics.get("cp")
+    cpk = metrics.get("cpk")
+    cg = metrics.get("cg")
+    cgk = metrics.get("cgk")
+
+    if cp:
+        cp = "Cp"
+        text = cp
+    if cpk:
+        cpk = "Cpk"
+        text = cpk
+    if cg:
+        cg = "Cg"
+        text = cg
+    if cgk:
+        cgk = "Cgk"
+        text = cgk
+    if cp and cpk:
+        text = f"{cp} and {cpk}"
+    if cg and cgk:
+        text = f"{cg} and {cgk}"
+
+    if cp or cpk:
+        text = (
+            f"This report presents a statistical evaluation of process "
+            f"capability based on {text} indices. The objective is "
+            f"to assess whether the measured process operates within defined "
+            f"specification limits and to identify potential sources of "
+            f"variability or instability. "
+        )
+    if cg or cgk:
+        text = (
+            f"This report presents a statistical evaluation of the measurement " 
+            f"system capability based on {text} indices. The objective is "
+            f"to assess whether the measurement system is sufficiently precise "
+            f"and accurate within defined tolerance limits and to identify "
+            f"potential sources of measurement variation or bias. "
+        )
+
+    return text
+
+def build_subheader_intro(story, styles, metrics):
+
+    text = metrics_subheader(metrics)
+
+    justified_style = ParagraphStyle(
+    name="Justified",
+    parent=styles["Normal"],
+    alignment=TA_JUSTIFY,
+    leading=14,          # riadkovanie (dôležité pre čitateľnosť)
+    spaceAfter=10,
+)
+    story.append(
+        Paragraph(text,
+                  justified_style
         )
     )
 
@@ -63,11 +125,11 @@ def render_formula(formula, fontsize=18):
     with plt.style.context("default"):
         fig, ax = plt.subplots(figsize=(3, 1))
         ax.axis("off")
-        ax.text(0.5, 0.62, formula, fontsize=fontsize, ha="center", va="baseline")
+        ax.text(0.5, 0.5, formula, fontsize=fontsize, ha="center", va="center")
 
         buffer = io.BytesIO()
         plt.savefig(buffer, format="png", dpi=300, bbox_inches="tight",
-                    pad_inches=0.15, facecolor="white")
+                    pad_inches=0.0, facecolor="white")
         plt.close(fig)
         buffer.seek(0)
         
@@ -77,11 +139,10 @@ def render_formula(formula, fontsize=18):
 def build_header_metrics_tolerances(story, styles, metrics):
 
     FORMULAS = {
-        "Cp":  {"formula": r"$C_p = \dfrac{USL - LSL}{6\sigma}$", "w": 48, "h": 19},
-        "Cpk": {"formula": r"$C_{pk} = \min\left(\dfrac{USL - \mu}{3\sigma}, \dfrac{\mu - LSL}{3\sigma}\right)$", "w": 70, "h": 20},
-        "Cg":  {"formula": r"$C_g = \dfrac{USL - LSL}{6\sigma_g}$", "w": 50, "h": 20},
-        "Cgk": {"formula": r"$C_{gk} = \min\left(\dfrac{USL - \mu_g}{3\sigma_g}, \dfrac{\mu_g - LSL}{3\sigma_g}\right)$", "w": 75, "h": 20},
-        "Lim": {"formula": r"$USL, LSL = \mu \pm \mu \cdot \frac{p}{100}$", "w": 50, "h": 20},
+        "Cp":  {"formula": r"$C_p = \dfrac{USL - LSL}{6\sigma}$", "w": 40, "h": 14.4},
+        "Cpk": {"formula": r"$C_{pk} = \min\left(\dfrac{USL - \mu}{3\sigma}, \dfrac{\mu - LSL}{3\sigma}\right)$", "w": 56, "h": 14.4},
+        "Cg":  {"formula": r"$C_g = \dfrac{USL - LSL}{6\sigma_g}$", "w": 40, "h": 14.4},
+        "Cgk": {"formula": r"$C_{gk} = \min\left(\dfrac{USL - \mu_g}{3\sigma_g}, \dfrac{\mu_g - LSL}{3\sigma_g}\right)$", "w": 56, "h": 14.4},
     }
 
     label = metrics_label(metrics)
@@ -89,14 +150,13 @@ def build_header_metrics_tolerances(story, styles, metrics):
         return
 
     selected_metrics = label.split("/")
-    selected_metrics.append("Lim")   # vždy 3 kusy (2 alebo 3? -> tu bude 3 v jednom riadku)
 
     images = []
     col_widths = []
 
     story.append(
         Paragraph(
-            "The calculations presented in this report are based on the following formulas.",
+            "The calculations presented in this report are based on the following formulas:",
             styles["Normal"]
         )
     )
@@ -124,7 +184,7 @@ def build_header_metrics_tolerances(story, styles, metrics):
 
     table.setStyle(TableStyle([
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("VALIGN", (0, 0), (-1, -1), "CENTER"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
@@ -132,28 +192,47 @@ def build_header_metrics_tolerances(story, styles, metrics):
     ]))
 
     story.append(table)
-    story.append(Spacer(0,8 * mm))
-
     
 def build_info_subheader(story, styles, data, metrics):
-    
-    sample_value_reg = r"Sample Value \d+"
+    col_samples = st.session_state["Change_Samples"]
+    col_components = st.session_state["Change_Component"]
+    col_subboard = st.session_state["Change_Sub-Board"]
 
+    justified_style = ParagraphStyle(
+        name="Justified",
+        parent=styles["Normal"],
+        alignment=TA_JUSTIFY,
+        leading=14,          # riadkovanie (dôležité pre čitateľnosť)
+        spaceAfter=10,
+)
+    
+    sample_value_reg = fr"{col_samples} \d+"
     sample_value_cols = [
         col for col in data.columns if re.search(sample_value_reg, col)]
+    sample_num = len(sample_value_cols)
     
-    components = data["Component"].unique()
+    components = data[col_components].unique()
     components_num = len(components)
     component_list = ', '.join(components)
+    if components_num == 1:
+        components_num = "single"
+        component_str = "single component"
+    else:
+        component_str = f"{components_num} components"
 
-    subboards_num = len(data["Sub-board"].unique())
+    subboards_num = len(data[col_subboard].unique())
     if subboards_num == 1:
         subboards_num = "single"
-        subboard_str = "board"
+        subboard_str = f"{subboards_num} sub-board"
     else:
-        subboard_str = "sub-boards"
+        subboard_str = f"{subboards_num} sub-boards"
     
-    sample_num = len(sample_value_cols)
+    if components_num == "single" and subboards_num == "single":
+        components_per_board = 1
+        components_total = components_per_board * sample_num
+    else:
+        components_total = components_num * subboards_num * sample_num
+    
     measurement_num = data.shape[0]
 
     label = metrics_label(metrics)
@@ -165,26 +244,30 @@ def build_info_subheader(story, styles, data, metrics):
     if "Cp" in selected_metrics or "Cpk" in selected_metrics:
         story.append(
             Paragraph(
-                f"The Cp/Cpk capability evaluation comprised {sample_num} boards, "
-                f"each measured {measurement_num} times, resulting in "
-                f"{sample_num * measurement_num} total measurements. "
-                f"The study encompassed {subboards_num} {subboard_str} and {components_num} components. "
+                f"The Cp/Cpk capability evaluation was performed on measurement system "
+                f"data consisting of {sample_num} boards, each containing {subboard_str} "
+                f"with {component_str} per sub-board. In total, {components_total} "
+                f"components were inspected, resulting in {measurement_num} measurements",
+                justified_style
             )
         )
 
     if "Cg" in selected_metrics or "Cgk" in selected_metrics:
         story.append(
             Paragraph(
-                f"The Cg/Cgk measurement system capability evaluation was performed on a single product, "
-                f"measured {measurement_num} times, resulting in {measurement_num} total measurements. "
-                f"The study encompassed {subboards_num} {subboard_str} and {components_num} components. "
+                f"The Cg/Cgk capability evaluation was performed on measurement system data "
+                f"consisting of {sample_num} inspections of single board, each containing "
+                f"{subboard_str} with {component_str} per sub-board.In total, "
+                f"{components_total} components were inspected, resulting "
+                f"in {measurement_num} measurements.",
+                justified_style
             )
     )
 
-    story.append(Spacer(0,2 * mm))
+    story.append(Spacer(0,1 * mm))
     story.append(
         Paragraph(
-            f"The inspected components per {subboard_str} are detailed below."
+            f"The inspected components per single subboard are detailed below."
         )
     )
     story.append(Spacer(0,1 * mm))
@@ -193,6 +276,27 @@ def build_info_subheader(story, styles, data, metrics):
             f"{component_list}"
         )
     )
+    story.append(Spacer(0,5 * mm))
+    if "Cp" in selected_metrics or "Cpk" in selected_metrics:
+        story.append(
+            Paragraph(
+                "Figure: Cp and Cpk capability indices calculated for all measurements. "
+                "The plot illustrates variability across individual measurements, with "
+                "acceptance thresholds indicated by dashed lines. Values below the "
+                "thresholds identify potential process capability issues.",
+                justified_style
+            )
+        )
+    if "Cg" in selected_metrics or "Cgk" in selected_metrics:
+        story.append(
+            Paragraph(
+                "Figure: Cg and Cgk capability indices calculated for all measurements. "
+                "The plot illustrates variability of the measurement system across individual measurements, "
+                "with acceptance thresholds indicated by dashed lines. Values below the thresholds "
+                "indicate insufficient measurement system capability.",
+                justified_style
+            )
+        )
 
 def fig_to_buffer(fig, dpi=300):
 
@@ -229,6 +333,148 @@ def fig_to_buffer(fig, dpi=300):
 
     buffer.seek(0)
     return buffer
+
+def build_conclusion(story, styles, data, metrics):
+    cp = metrics.get("cp")
+    cpk = metrics.get("cpk")
+    cg = metrics.get("cg")
+    cgk = metrics.get("cgk")
+
+    justified_style = ParagraphStyle(
+        name="Justified",
+        parent=styles["Normal"],
+        alignment=TA_JUSTIFY,
+        leading=14,          
+        spaceAfter=10,
+)
+
+    def conclusion_cp_cpk(cp, cpk):
+        conclusion = None
+
+        if cp:
+            if (data["Cp"] > 1.33).all():
+                conclusion = (
+                    "All Cp values exceed the defined acceptance thresholds. "
+                    "This indicates that the process has sufficient potential capability, "
+                    "with variability well within the specified tolerance limits.")
+            else:
+                conclusion = (
+                    (
+                    "Cp values below the defined acceptance thresholds were identified. "
+                    "This indicates that the process does not have sufficient potential capability, "
+                    "as variability exceeds the specified tolerance limits.")
+                )
+            if cpk:
+                if (data["Cp"] > 1.33).all() and (data["Cpk"] > 1.67).all():
+                    conclusion = (
+                        "All Cp and Cpk values exceed the defined acceptance "
+                        "thresholds. This indicates that the process is "
+                        "capable, properly centered, and exhibits low "
+                        "variability relative to the specified limits.")
+                elif not (data["Cp"] > 1.33).all() and (data["Cpk"] > 1.67).all():
+                    conclusion = (
+                        "Cp values below the defined acceptance thresholds were identified, while Cpk values remain within acceptable limits. "
+                        "This suggests that the process is properly centered, but exhibits elevated variability "
+                        "relative to the specified tolerance limits.")
+                elif (data["Cp"] > 1.33).all() and not (data["Cpk"] > 1.67).all():
+                    conclusion = (
+                        "Cp values meet the defined acceptance thresholds, while some Cpk values do not. "
+                        "This indicates that although process variability is acceptable, the process is not properly centered "
+                        "relative to the specified limits."
+                    )
+                elif not (data["Cp"] > 1.33).all() and not (data["Cpk"] > 1.67).all():
+                    conclusion = (
+                        "Cp and Cpk values below the defined acceptance thresholds were identified. "
+                        "This indicates that the process is not capable, due to excessive variability "
+                        "and inadequate centering relative to the specified limits."
+                    )
+                            
+        if cpk and not cp:
+            if (data["Cpk"] > 1.67).all():
+                conclusion = (
+                        "All Cpk values exceed the defined acceptance thresholds. "
+                        "This indicates that the process is capable and properly centered, "
+                        "with variability well within the specified limits.")
+            else:
+                conclusion = (
+                        "Cpk values below the defined acceptance thresholds were identified. "
+                        "This indicates that the process is not capable, likely due to a combination "
+                        "of excessive variability and/or improper centering.")
+        
+        return conclusion
+
+    def conclusion_cg_cgk(cg, cgk):        
+        conclusion = None
+
+        if cg:
+            if (data["Cg"] > 1.33).all():
+                conclusion = (
+                    "All Cg values exceed the defined acceptance thresholds. "
+                    "This indicates that the measurement system has sufficient precision, "
+                    "with measurement variability well within the specified tolerance limits."
+                )
+            else:
+                conclusion = (
+                    "Cg values below the defined acceptance thresholds were identified. "
+                    "This indicates that the measurement system does not have sufficient precision, "
+                    "as measurement variability exceeds the specified tolerance limits."
+                )
+
+            if cgk:
+                if (data["Cg"] > 1.33).all() and (data["Cgk"] > 1.67).all():
+                    conclusion = (
+                        "All Cg and Cgk values exceed the defined acceptance thresholds. "
+                        "This indicates that the measurement system is both sufficiently precise "
+                        "and properly centered, with measurement variability well within the specified limits."
+                    )
+
+                elif not (data["Cg"] > 1.33).all() and (data["Cgk"] > 1.67).all():
+                    conclusion = (
+                        "Cg values below the defined acceptance thresholds were identified, while Cgk values remain within acceptable limits. "
+                        "This suggests that the measurement system is properly centered, but exhibits elevated measurement variability."
+                    )
+
+                elif (data["Cg"] > 1.33).all() and not (data["Cgk"] > 1.67).all():
+                    conclusion = (
+                        "Cg values meet the defined acceptance thresholds, while some Cgk values do not. "
+                        "This indicates that although measurement precision is acceptable, the measurement system is not properly centered."
+                    )
+
+                elif not (data["Cg"] > 1.33).all() and not (data["Cgk"] > 1.67).all():
+                    conclusion = (
+                        "Cg and Cgk values below the defined acceptance thresholds were identified. "
+                        "This indicates that the measurement system is not capable, due to insufficient precision "
+                        "and inadequate centering relative to the specified limits."
+                    )
+
+        if cgk and not cg:
+            if (data["Cgk"] > 1.67).all():
+                conclusion = (
+                    "All Cgk values exceed the defined acceptance thresholds. "
+                    "This indicates that the measurement system is both precise and properly centered, "
+                    "with measurement results consistently within the specified tolerance limits."
+                )
+            else:
+                conclusion = (
+                    "Cgk values below the defined acceptance thresholds were identified. "
+                    "This indicates that the measurement system is not capable, likely due to insufficient precision "
+                    "and/or improper centering."
+                )
+
+        return conclusion
+
+    story.append(Spacer(0,5 * mm))
+    if cp or cpk:
+        conclusion = conclusion_cp_cpk(cp, cpk)
+        story.append(
+            Paragraph(f"Conclusion: {conclusion}", justified_style
+            ))
+    
+    elif cg or cgk:
+        conclusion = conclusion_cg_cgk(cg, cgk)
+        story.append(
+            Paragraph(f"Conclusion: {conclusion}", justified_style
+            ))
 
 def dataframe_to_head_and_rows(data):
 
@@ -361,7 +607,9 @@ def build_pdf(data, metrics, fig, customer, product):
 
     # Title Header
     build_header_title(story, styles, metrics, customer, product)
-    story.append(Spacer(1,6 * mm))
+    story.append(Spacer(1,5 * mm))
+
+    build_subheader_intro(story, styles, metrics)
 
     # Sub Header Text
     build_header_metrics_tolerances(story, styles, metrics)
@@ -371,10 +619,15 @@ def build_pdf(data, metrics, fig, customer, product):
     img_buffer = fig_to_buffer(fig)
     story.append(Image(img_buffer, width=160*mm, height=100*mm))
     plt.close(fig)
+    
+    # Conclusion 
+    build_conclusion(story, styles, data, metrics)
 
     # Next page - Landscape Table
     story.append(NextPageTemplate("landscape"))
     story.append(PageBreak())
+
+    """
     header, rows = dataframe_to_head_and_rows(data)
 
     land_content_w = land_w - doc.leftMargin - doc.rightMargin
@@ -386,7 +639,7 @@ def build_pdf(data, metrics, fig, customer, product):
         rows,
         numeric_cols=[2,5,6,7,8,9,10]
     )
-
+    """
 
 
     doc.build(story)

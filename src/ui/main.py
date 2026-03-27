@@ -5,6 +5,7 @@ import pandas as pd
 import base64
 import data_handler as dh
 import report as rp
+import re
 
 
 # ---> UI INIT <---
@@ -96,93 +97,6 @@ def init_ui():
 
     return ui
 
-"""
-def init_ui(
-        data_available: bool,
-        rename_columns: bool,
-        sidebar_pipe_done: bool,
-        metrics_done: bool,
-        scope_sel_done: bool,
-        analysis_enabled: bool
-):  
-
-    tabs = []
-
-    if data_available:
-        tabs.append("📑 Data Viewer")
-    if rename_columns:
-        tabs.append("🛠️ Rename columns")
-    if sidebar_pipe_done:
-        tabs.append("📊 Metrics")
-    if metrics_done:
-        tabs.append("🔍 Scope")
-    if scope_sel_done:
-        tabs.append("📋 Prelim Results")
-    if analysis_enabled:
-        tabs.append("⚠️ Fail Analysis")
-    if scope_sel_done:
-        tabs.append("📏 Tolerances")
-    if scope_sel_done:
-        tabs.append("📈 Results")
-    if scope_sel_done:
-        tabs.append("💾 Export Results")
-
-    if not tabs:
-        return None, None, None, None, None, None, None, None, None
-    
-    created_tabs = st.tabs(tabs)
-
-    viewer = None
-    columns = None
-    metrics = None
-    scope = None
-    prelim = None
-    analysis = None
-    tolerance = None
-    results = None
-    export = None
-
-    tab_num = 0
-    if data_available:
-        with created_tabs[tab_num]:
-            viewer = st.empty()
-        tab_num += 1
-    if rename_columns:
-        with created_tabs[tab_num]:
-            columns = st.container()
-        tab_num += 1
-    if sidebar_pipe_done:
-        with created_tabs[tab_num]:
-            metrics = st.container()
-        tab_num += 1
-    if metrics_done:
-        with created_tabs[tab_num]:
-            scope = st.container()
-        tab_num += 1
-    if scope_sel_done:
-        with created_tabs[tab_num]:
-            prelim = st.container()    
-        tab_num += 1
-    if analysis_enabled:
-        with created_tabs[tab_num]:
-            analysis = st.container()
-        tab_num += 1
-    if scope_sel_done:
-        with created_tabs[tab_num]:
-            tolerance = st.container()
-        tab_num += 1
-    if scope_sel_done:
-        with created_tabs[tab_num]:
-            results = st.container()
-        tab_num += 1
-    if scope_sel_done:
-        with created_tabs[tab_num]:
-            export = st.container()
-        tab_num += 1
-
-    return viewer, columns, metrics, scope, prelim, analysis, tolerance, results, export
-"""
-
 # ---> DATA VIEWER <---
 def render_view(viewer, data):
     if data is None:
@@ -200,6 +114,8 @@ def render_view(viewer, data):
 # ---> RENAME COLUMNS <---
 def rename_columns(columns):
 
+    data = st.session_state["data_loaded"]
+
     if "loaded_rename_config" in st.session_state:
             loaded = st.session_state["loaded_rename_config"]
 
@@ -211,6 +127,7 @@ def rename_columns(columns):
             st.session_state["Change_Element_Name"] = loaded.get("Element Name", "")
             st.session_state["Change_Mean"] = loaded.get("Mean", "")
             st.session_state["Change_StDev"] = loaded.get("StDev", "")
+            st.session_state["Change_Samples"] = loaded.get("Sample Value Columns", "")
 
             del st.session_state["loaded_rename_config"]
 
@@ -261,6 +178,12 @@ def rename_columns(columns):
                               value = "Standard Deviation",
                               label_visibility = "collapsed")
         
+        static_text, input_text, static_text2, input_text2 = st.columns([1,1,1,1])
+        static_text.text("Measured Values")
+        input_text.text_input("Sample Value Columns", key = "Change_Samples",
+                              value = "Sample Value",
+                              label_visibility = "collapsed")
+        
         st.markdown("---")
 
         load_config, save_config, close_window, rgap= st.columns([1,1,1,1])
@@ -277,6 +200,7 @@ def rename_columns(columns):
                 "Component": config.get("Component", ""),
                 "Algorithm": config.get("Algorithm", ""),
                 "Sample Value": config.get("Sample Value", ""),
+                "Sample Value Columns": config.get("Sample Value Columns", ""),
                 "Element Id": config.get("Element Id", ""),
                 "Element Name": config.get("Element Name", ""),
                 "Mean": config.get("Mean", ""),
@@ -290,12 +214,60 @@ def rename_columns(columns):
             "Component": st.session_state.get("Change_Component", ""),
             "Algorithm": st.session_state.get("Change_Algorithm", ""),
             "Sample Value": st.session_state.get("Change_Sample_Value", ""),
+            "Sample Value Columns": st.session_state.get("Change_Samples", ""),
             "Element Id": st.session_state.get("Change_Element_Id", ""),
             "Element Name": st.session_state.get("Change_Element_Name", ""),
             "Mean": st.session_state.get("Change_Mean", ""),
             "StDev": st.session_state.get("Change_StDev", "")
         }
 
+        # ---> GUARD - INCORECT COLUMN NAMES <---
+        mapped_values = {
+            key: value.strip()
+            for key, value in rename_map.items()
+            if isinstance(value, str) and value.strip()
+        }
+
+        data_columns = set(data.columns)
+
+        missing_mapped = {}
+
+        for key, value in mapped_values.items():
+
+            if key == "Sample Value Columns":
+                # regex match – aspoň jeden stĺpec musí sedieť
+                pattern = re.escape(value)
+                matches = [col for col in data.columns if re.search(pattern, col)]
+
+                if not matches:
+                    missing_mapped[key] = value
+
+                # uložíš si aj matchnuté stĺpce (bude sa hodiť neskôr)
+                st.session_state["matched_sample_columns"] = matches
+
+            else:
+                if value not in data_columns:
+                    missing_mapped[key] = value
+
+        empty_mapped = [
+            key for key, value in rename_map.items()
+            if not isinstance(value, str) or not value.strip()
+        ]
+
+        if empty_mapped:
+            st.warning("Empty mappings:")
+            for key in empty_mapped:
+                st.markdown(f"- {key}")
+
+        if missing_mapped:
+            st.error("Mapped columns not found in dataset:")
+            for key, value in missing_mapped.items():
+                st.markdown(f"- **{key}** → `{value}`")
+
+        mapping_valid = not empty_mapped and not missing_mapped
+        st.session_state["rename_columns_valid"] = mapping_valid
+        # ---> GUARD ENDS HERE <---
+        
         json_bytes = json.dumps(rename_map, indent=4).encode("utf-8")
 
         save_config.download_button(
@@ -309,9 +281,12 @@ def rename_columns(columns):
         close_tab = close_window.button("Close", use_container_width=True)
 
         if close_tab:
-            st.session_state["rename_columns"] = False
-            st.session_state["last_loaded_config_name"] = None
-            st.rerun()
+            if not st.session_state.get("rename_columns_valid", False):
+                st.error("Cannot close configurator. Some mappings are empty or missing in dataset.")
+            else:
+                st.session_state["rename_columns"] = False
+                st.session_state["last_loaded_config_name"] = None
+                st.rerun()
                    
 # ---> METRICS <---
 def render_metrics(metrics):
@@ -440,16 +415,6 @@ def render_metrics(metrics):
 
         st.session_state["metrics"] = metrics_dict
 
-        """    
-        metrics_selected = any(metrics_dict["metrics"].values())
-
-        st.session_state.metrics_sel_done = metrics_selected
-
-        if metrics_selected:
-            st.session_state["metrics"] = metrics_dict
-        else:
-            st.session_state["metrics"] = None
-     """
 # ---> SCOPE <---
 def render_scope(scope, elements):
     with scope:
@@ -570,7 +535,7 @@ def render_fail_analysis(data, analysis, figs, metrics):
             "Component": parts[1],
             "Algorithm": parts[2],
             "Output": parts[3],
-            "Pin Id": int(float(parts[4])),
+            "Element Id": int(float(parts[4])),
         } 
 
         data_cop = data.copy()
@@ -800,13 +765,11 @@ def render_tolerances(tolerance, tol_elements):
     
 
     if st.session_state.get("tolerances_applied") != tolerances_applied:
-        st.session_state["tolerances_applied"] = tolerances_applied
+        st.session_state["tolerances_applied"] = True
 
     return tolerances_applied
-# -------------------
-# EXPORT RESULTS TAB 
-# -------------------
-             
+
+# ---> EXPORT < ---             
 def render_export_results(data, fig, export, metrics):
 
     def show_pdf(pdf_bytes: bytes, height: int = 800):
@@ -815,7 +778,6 @@ def render_export_results(data, fig, export, metrics):
             f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="{height}" style="border:none;"></iframe>',
             height=height,
     )
-        
 
     with export:
 

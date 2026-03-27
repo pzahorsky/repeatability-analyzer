@@ -116,8 +116,7 @@ if ui["prelim"] is not None:
         ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
-
-# CURENTLY SET TO ANALYZE ONLY PRELIM DATA !!!        
+     
 if ui["analysis"] is not None:
     with ui["analysis"]:
         st.radio("Data Input",
@@ -154,10 +153,11 @@ if ui["analysis"] is not None:
                                                      final_failed_rows)
             figs = plt.fail_analysis_plotter(data_final_failed, metrics["metrics"],
                                              mode)
+            
             ui_main.render_fail_analysis(data_final_failed,
                                      ui["analysis"],
                                      figs,
-                                     metrics)
+                                     metrics)                             
         else:
             st.subheader("No tolerances applied")
 
@@ -216,15 +216,31 @@ if ui["results"] is not None:
 
 # CURENTLY SET TO EXPORT ONLY PRELIM DATA !!!
 if ui["export"] is not None:
-    data_prelim = state.get_value("data_prelim")
     metrics = state.get_value("metrics")
+    
+    if state.get_value("tolerances_applied"):
+        mode = "Final"
+        data_final = state.get_value("data_tolerances_analytics")
+        export_plot = plt.results_export_plotter(data_final, 
+                                                metrics["metrics"],
+                                                mode)
+        ui_main.render_export_results(data_final,
+                                    export_plot, 
+                                    ui["export"], 
+                                    metrics["metrics"])
 
-    export_plot = plt.results_export_plotter(data_prelim, 
-                                             metrics["metrics"])
-    ui_main.render_export_results(data_prelim,
-                                  export_plot, 
-                                  ui["export"], 
-                                  metrics["metrics"])
+    else:
+        st.write("Tolerances not Applied - Preliminary Data Available for Export")
+
+        mode = "Preliminary"
+        data_prelim = state.get_value("data_prelim")
+        export_plot = plt.results_export_plotter(data_prelim, 
+                                                metrics["metrics"],
+                                                mode)
+        ui_main.render_export_results(data_prelim,
+                                    export_plot, 
+                                    ui["export"], 
+                                    metrics["metrics"])
 
 # STATES DEBUG
 """
