@@ -77,6 +77,9 @@ if state.has_value("data_loaded"):
         
         state.set_value("data_pipeline", data)
 
+# ---> APP STATE CHECKER <---
+state.enforce_state_rules()
+
 # ---> UI INIT <---
 ui = ui_main.init_ui()
 
@@ -256,6 +259,14 @@ if ui["export"] is not None:
                                     export_plot, 
                                     ui["export"], 
                                     metrics["metrics"])
+        
+
+
+st.write(
+    "Sidebar", state.get_value("sidebar_pipeline_done"),
+    "Metrics", state.get_value("metrics_sel_done"),
+    "Scope", state.get_value("scope_sel_done")
+)
         
         
 

@@ -63,34 +63,23 @@ def get_value(key):
 def has_value(key):
     return st.session_state.get(key) is not None
 
-def reset_downstream(state_key):
-    app_flow = [
-        "sidebar_pipeline_done",
-        "metrics_sel_done",
-        "prelim_active",
-        "fail_analysis_enabled",
-        "tolerances_active",
-        "results_active",
-        "export_active"
-    ]
+def enforce_state_rules():
+    s = st.session_state
 
-    defaults = {
-        "sidebar_pipeline_done": False,
-        "metrics_sel_done": False,
-        "prelim_active": False,
-        "fail_analysis_enabled": False,
-        "tolerances_active": False,
-        "results_active": False,
-        "export_active": False
-    }
+    if not s.get("sidebar_pipeline_done", False):
+        s["metrics_sel_done"] = False
+        s["scope_sel_done"] = False
+        s["fail_analysis_enabled"] = False
+        s["tolerances_applied"] = False
 
-    if state_key not in app_flow:
-        return
-    
-    flow_index = app_flow.index(state_key)
+    if not s.get("metrics_sel_done", False):
+        s["scope_sel_done"] = False
+        s["fail_analysis_enabled"] = False
+        s["tolerances_applied"] = False
 
-    for key in app_flow[flow_index + 1]:
-        if key in defaults:
-            st.session_state[key] = defaults[key]
+    if not s.get("scope_sel_done", False):
+        s["fail_analysis_enabled"] = False
+        s["tolerances_applied"] = False
 
-
+    if not s.get("prelim_failed_rows"):
+        s["fail_analysis_enabled"] = False
