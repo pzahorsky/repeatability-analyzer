@@ -2,30 +2,30 @@ import matplotlib.pyplot as plt
 import re
 import streamlit as st
 import numpy as np
+import pandas as pd
 
 def fail_analysis_plotter(data, metrics, mode):
-
     col_subboard = st.session_state["Change_Sub-Board"]
     col_component = st.session_state["Change_Component"]
-    col_algorithm = st.session_state["Change_Algorithm"] 
-    col_sampleval = st.session_state["Change_Sample_Value"] 
+    col_algorithm = st.session_state["Change_Algorithm"]
+    col_sampleval = st.session_state["Change_Sample_Value"]
     col_elementid = st.session_state["Change_Element_Id"]
-    col_stdev = st.session_state["Change_Mean"] 
-    col_mean = st.session_state["Change_StDev"]
-    col_samples = st.session_state["Change_Samples"] 
+    col_mean = st.session_state["Change_Mean"]
+    col_stdev = st.session_state["Change_StDev"]
+    col_samples = st.session_state["Change_Samples"]
 
-    cols = [col_subboard, col_component, col_algorithm, 
-            col_sampleval, col_elementid, col_stdev,
-            col_mean]
-    
+    cols = [
+        col_subboard, col_component, col_algorithm,
+        col_sampleval, col_elementid, col_stdev, col_mean
+    ]
+
     metric_col_map = {}
-
     usl_col = None
     lsl_col = None
 
     if mode == "Preliminary":
-        cols += ["USL_glob","LSL_glob"]
-        
+        cols += ["USL_glob", "LSL_glob"]
+
         metric_col_map = {
             "cp": "Cp_glob",
             "cpk": "Cpk_glob",
@@ -50,43 +50,34 @@ def fail_analysis_plotter(data, metrics, mode):
         lsl_col = "Lsl"
 
     sample_value_reg = rf"{col_samples} \d+"
-
-    sample_value_cols = [
-        col for col in data.columns if re.search(sample_value_reg, col)]
-    
+    sample_value_cols = [col for col in data.columns if re.search(sample_value_reg, col)]
     cols += sample_value_cols
 
-    selector_cols = [col_subboard, col_component, col_algorithm, 
-                     col_sampleval, col_elementid]
-    
-
+    selector_cols = [
+        col_subboard, col_component, col_algorithm,
+        col_sampleval, col_elementid
+    ]
 
     for metric, value in metrics.items():
         if value:
             selector_cols.append(metric_col_map[metric])
-    
 
     col_uniques = {
-        col: sorted(data[col].unique())
+        col: sorted(data[col].dropna().unique())
         for col in selector_cols
     }
 
-    ready_to_plot = all(
-       len(values) > 0
-        for values in col_uniques.values()
-)
+    ready_to_plot = all(len(values) > 0 for values in col_uniques.values())
     if not ready_to_plot:
         return None
-    
-    plots = {}
 
+    plots = {}
     grouped = data.groupby(selector_cols)
 
     for keys, group in grouped:
         plt.style.use("dark_background")
         fig, ax = plt.subplots(figsize=(12, 6))
 
-        # --- X for plot
         values = (
             group[sample_value_cols]
             .astype(float)
@@ -95,7 +86,10 @@ def fail_analysis_plotter(data, metrics, mode):
         )
         values = values[~np.isnan(values)]
 
-        # --- IQR Outlier Detection ---
+        if len(values) == 0:
+            plt.close(fig)
+            continue
+
         q1, q3 = np.percentile(values, [25, 75])
         iqr = q3 - q1
         low_thr = q1 - 1.5 * iqr
@@ -104,89 +98,121 @@ def fail_analysis_plotter(data, metrics, mode):
         core = values[(values >= low_thr) & (values <= high_thr)]
         outliers = values[(values < low_thr) | (values > high_thr)]
 
-        # --- IQR not found anything, highlight extremes (Cp killers proxy)
         if len(outliers) == 0 and len(values) >= 5:
             mu = float(np.mean(values))
-            sd = group[col_stdev].iloc[0]
-            if sd > 0:
-                z = np.abs((values - mu) / sd)
-                top_n = min(3, len(values))   # napr. top 3
+            sd_for_z = group[col_stdev].iloc[0]
+            if pd.notna(sd_for_z) and sd_for_z > 0:
+                z = np.abs((values - mu) / sd_for_z)
+                top_n = min(3, len(values))
                 idx = np.argsort(z)[-top_n:]
-                outliers = values[idx]        # použijeme ich len na zvýraznenie (nie ako "IQR outliers")
+                outliers = values[idx]
 
-        # --- Histogram ---
-        n = len(values)
-        bins = min(30, max(10, int(np.sqrt(n))))
-        ax.hist(core, bins=bins, alpha=0.85, label="Core distribution")
-        if len(outliers):
-            ax.hist(outliers, bins=bins, alpha=0.95, color="red", label="Outliers")
-
-        if len(outliers):
-            ymin, ymax = ax.get_ylim()
-            _, bin_edges = np.histogram(values, bins=bins)
-            bin_width = bin_edges[1] - bin_edges[0]
-
-            for v in outliers:
-                ax.add_patch(
-                    plt.Rectangle(
-                        (v - bin_width / 2, ymin),
-                        bin_width,
-                        ymax - ymin,
-                        color="red",
-                        alpha=0.8,
-                        zorder=4
-                    )
-                )
-                ax.text(
-                    v,
-                    ymax * 0.95,
-                    f"{v:.2f}",
-                    color="white",
-                    ha="center",
-                    va="top",
-                    fontsize=10,
-                    rotation=90,
-                    zorder=5
-                )
-
-        # >>> ADDED (keep legend entry for outliers even without ax.hist(outliers))
-        ax.plot([], [], color="red", linewidth=6, label="Outliers")
-    # <<< ADDED
-
-        # --- Limits ---
         lsl = group[lsl_col].iloc[0]
         usl = group[usl_col].iloc[0]
 
-        # ---> CHECK THIS AFTER AGAIN <---
+        if pd.isna(lsl) or pd.isna(usl):
+            plt.close(fig)
+            continue
+
+        pad = (usl - lsl) * 0.25
+        x_min = lsl - pad
+        x_max = usl + pad
+
+        visible_outliers = outliers[(outliers >= x_min) & (outliers <= x_max)]
+        hidden_left = int(np.sum(outliers < x_min))
+        hidden_right = int(np.sum(outliers > x_max))
+
+        n = len(values)
+        bins = min(30, max(10, int(np.sqrt(n))))
+
+        core_visible = core[(core >= x_min) & (core <= x_max)]
+        if len(core_visible):
+            ax.hist(core_visible, bins=bins, range=(x_min, x_max), alpha=0.85, label="Core distribution")
+
+        if len(visible_outliers):
+            ax.hist(
+                visible_outliers,
+                bins=bins,
+                range=(x_min, x_max),
+                alpha=0.95,
+                color="red",
+                label="Outliers"
+            )
+
+        ax.plot([], [], color="red", linewidth=6, label="Outliers")
+
+        ymin, ymax = ax.get_ylim()
+        _, bin_edges = np.histogram(values[(values >= x_min) & (values <= x_max)], bins=bins, range=(x_min, x_max))
+        bin_width = bin_edges[1] - bin_edges[0] if len(bin_edges) > 1 else (x_max - x_min) / bins
+
+        for v in visible_outliers:
+            ax.add_patch(
+                plt.Rectangle(
+                    (v - bin_width / 2, ymin),
+                    bin_width,
+                    ymax - ymin,
+                    color="red",
+                    alpha=0.8,
+                    zorder=4
+                )
+            )
+            ax.text(
+                v,
+                ymax * 0.95,
+                f"{v:.2f}",
+                color="white",
+                ha="center",
+                va="top",
+                fontsize=10,
+                rotation=90,
+                zorder=5,
+                clip_on=True
+            )
+
+        if hidden_left > 0:
+            ax.text(
+                x_min,
+                ymax * 0.98,
+                f"{hidden_left} outlier(s) < range",
+                color="red",
+                ha="left",
+                va="top",
+                fontsize=9
+            )
+
+        if hidden_right > 0:
+            ax.text(
+                x_max,
+                ymax * 0.98,
+                f"{hidden_right} outlier(s) > range",
+                color="red",
+                ha="right",
+                va="top",
+                fontsize=9
+            )
+
         sd = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
         sd_all = float(np.std(values, ddof=0)) if len(values) > 1 else 0.0
+        mean_val = float(np.mean(values))
 
-        # --- Tolerance Range ---
         ax.axvspan(lsl, usl, alpha=0.06, color="green", label="Spec window")
-        if len(outliers) == 0 and len(values) >= 5:
-            ax.axvspan(mu - 3*sd, mu + 3*sd, alpha=0.08, label="±3σ")
 
-        # USL / LSL ticks
+        if len(outliers) == 0 and len(values) >= 5:
+            ax.axvspan(mean_val - 3 * sd, mean_val + 3 * sd, alpha=0.08, label="±3σ")
+
         ax.axvline(usl, linestyle="--", linewidth=1.5, color="orange", label=f"USL - {usl:.2f}")
         ax.axvline(lsl, linestyle="--", linewidth=1.5, color="orange", label=f"LSL - {lsl:.2f}")
-
-        # Mean
-        mean_val = float(np.mean(values))
         ax.axvline(mean_val, linestyle=":", linewidth=1.5, color="yellow", label=f"Mean - {mean_val:.2f}")
 
-        # --- Rug & Outliers ---
-        if len(outliers):
+        if len(visible_outliers):
             y_min, y_max = ax.get_ylim()
-            rug_y = np.full_like(outliers, y_min + 0.02 * (y_max - y_min))
-            ax.plot(outliers, rug_y, "|", color="red", markersize=18, markeredgewidth=2)
+            rug_y = np.full_like(visible_outliers, y_min + 0.02 * (y_max - y_min))
+            ax.plot(visible_outliers, rug_y, "|", color="red", markersize=18, markeredgewidth=2)
 
-        # --- Axes & Labels ---
-        pad = (usl - lsl) * 0.25
-        ax.set_xlim(lsl - pad, usl + pad)
+        ax.set_xlim(x_min, x_max)
 
         title = " - ".join(str(k) for k in keys)
         ax.set_title(f"Outliers: {len(outliers)} / {len(values)} (IQR)")
-
         ax.set_xlabel("Measured Value")
         ax.set_ylabel("Count")
         ax.grid(True, alpha=0.15)
@@ -200,7 +226,7 @@ def fail_analysis_plotter(data, metrics, mode):
                 "usl": usl,
                 "lsl": lsl,
                 "mean": mean_val,
-                "stdev":sd_all
+                "stdev": sd_all
             }
         }
 

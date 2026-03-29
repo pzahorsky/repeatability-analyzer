@@ -752,11 +752,12 @@ def render_tolerances(tolerance, tol_elements):
                     usl = int(usl) if usl.strip() else None
                     lsl = int(lsl) if lsl.strip() else None
 
-            tolerances_dict[sample_name][selected_elements] = {
-                "target" : target,
-                "usl" : usl,
-                "lsl" : lsl               
-            }
+            if usl is not None and lsl is not None:
+                tolerances_dict[sample_name][selected_elements] = {
+                    "target": target,
+                    "usl": usl,
+                    "lsl": lsl
+                }
 
     tolerances_applied = any(
         element.get("usl") is not None and not pd.isna(element.get("usl")) and
@@ -766,8 +767,7 @@ def render_tolerances(tolerance, tol_elements):
         )
     
 
-    if st.session_state.get("tolerances_applied") != tolerances_applied:
-        st.session_state["tolerances_applied"] = True
+    st.session_state["tolerances_applied"] = tolerances_applied
 
     return tolerances_applied
 

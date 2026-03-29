@@ -273,7 +273,8 @@ def tolerances_elements(data):
     sample_name_col = st.session_state["Change_Sample_Value"]
     element_col = st.session_state["Change_Element_Name"]
 
-    scoped = data[data[sample_name_col].isin(sample_names)].dropna()
+    scoped = data[data[sample_name_col].isin(sample_names)]
+    scoped = scoped.dropna(subset=[sample_name_col, element_col])
     
     return (
         scoped
@@ -283,16 +284,14 @@ def tolerances_elements(data):
     )
 
 def data_after_tolerances(data):
-    
     data = data.copy()
+
     tolerances = st.session_state["tolerances_dict"]
     sample_value_col = st.session_state["Change_Sample_Value"]
     element_name_col = st.session_state["Change_Element_Name"]
     mean_col = st.session_state["Change_Mean"]
     stdev_col = st.session_state["Change_StDev"]
     metrics = st.session_state["metrics"]["metrics"]
-
-    data["Target"] = None
 
     if "Target" not in data.columns:
         data["Target"] = None
@@ -316,11 +315,19 @@ def data_after_tolerances(data):
             (mean - lsl) / (3 * sigma)
         ], axis=1).min(axis=1)
 
-    if data["Usl"] is not None and data["Lsl"] is not None:
-        sigma = data[stdev_col]
-        mean = data[mean_col]
-        usl = data["Usl"]
-        lsl = data["Lsl"]
+    valid_mask = (
+        data["Usl"].notna() &
+        data["Lsl"].notna() &
+        data[stdev_col].notna() &
+        data[mean_col].notna() &
+        (data[stdev_col] != 0)
+    )
+
+    if valid_mask.any():
+        sigma = data.loc[valid_mask, stdev_col]
+        mean = data.loc[valid_mask, mean_col]
+        usl = data.loc[valid_mask, "Usl"]
+        lsl = data.loc[valid_mask, "Lsl"]
         
         if metrics["cp"] or metrics["cg"]:
             cp_cg = capability(usl,lsl,sigma)
@@ -397,6 +404,51 @@ def fail_extractor(data):
     )
 
     return impact_df
+
+def rename_columns(data, metrics):
+    cp = metrics.get("cp")
+    cpk = metrics.get("cpk")
+    cg = metrics.get("cg")
+    cgk = metrics.get("cgk")
+
+    rename_dict = {}
+
+    if cp and cpk:
+        rename_dict = {
+            "Cp_glob": "Cp",
+            "Cpk_glob": "Cpk"
+        }
+    elif cp:
+        rename_dict = {
+            "Cp_glob": "Cp"
+        }
+    elif cpk:
+        rename_dict = {
+            "Cpk_glob": "Cpk"
+        }
+
+    if cg and cgk:
+        rename_dict = {
+            "Cg_glob": "Cg",
+            "Cgk_glob": "Cgk"
+        }
+    elif cg:
+        rename_dict = {
+            "Cg_glob": "Cg"
+        }
+    elif cgk:
+        rename_dict = {
+            "Cgk_glob": "Cgk"
+        }
+
+    rename_dict.update(
+        {
+            "USL_glob": "Usl",
+            "LSL_glob": "Lsl"
+        }
+    )
+    
+    return data.rename(columns = rename_dict)
 
 
         

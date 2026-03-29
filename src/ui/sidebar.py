@@ -6,7 +6,7 @@ import data_handler as dh
 # -----------------------
 
 def rename_columns():
-   return st.sidebar.button("⚙️")
+   return st.sidebar.button("⚙️ ")
 
 def data_upload():
    return st.sidebar.file_uploader("📁 Upload CSV file", type="csv")

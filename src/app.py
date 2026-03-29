@@ -29,15 +29,16 @@ if data_uploaded:
     except ValueError as e:
         st.error(str(e))
 
-# ---> SIDEBAR FILTER PIPELINE
+# ---> SIDEBAR FILTER PIPELINE <---
 if state.has_value("data_loaded"):
 
     data = state.get_value("data_loaded")
 
+    # ---> GUARD - VALIDATION OF COLUMNS IN DATA <---
     if not state.get_value("rename_columns_confirmed"):
         state.set_value("sidebar_pipeline_done", False)
         state.set_value("data_pipeline", data)
-        st.info("🔧 Confirm column mapping to continue.")
+        st.info("⚙️ Confirm column mapping to continue.")
     else:
         state.set_value("sidebar_pipeline_done", False)
         subboards = ui_side.subboard_selector(
@@ -76,20 +77,24 @@ if state.has_value("data_loaded"):
         
         state.set_value("data_pipeline", data)
 
-# ---> UI INIT
+# ---> UI INIT <---
 ui = ui_main.init_ui()
 
+# ---> VIEWER EVENTS <---
 if ui["viewer"] is not None:
     ui_main.render_view(ui["viewer"], state.get_value("data_pipeline"))
 
+# ---> RENAME COLUMNS EVENTS <---
 if ui["columns"] is not None:
     if ui_main.rename_columns(ui["columns"]):
         state.set_value("rename_columns", True)
         state.set_value("rename_columns_confirmed", False)
 
+# ---> METRICS EVENTS <---
 if ui["metrics"] is not None:
     ui_main.render_metrics(ui["metrics"])
 
+# ---> SCOPE EVENTS <---
 if ui["scope"] is not None:
     elements = dh.scope_elements(
         state.get_value("data_pipeline"),
@@ -100,6 +105,7 @@ if ui["scope"] is not None:
                                    ,selected_elements)
         state.set_value("data_scope", data)
 
+# ---> PRELIMINARY RESULTS EVENTS <---
 if ui["prelim"] is not None:
     metrics = state.get_value("metrics")
     data = state.get_value("data_scope")
@@ -122,7 +128,8 @@ if ui["prelim"] is not None:
         ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
-     
+
+# ---> FAIL ANALYSIS EVENTS <---
 if ui["analysis"] is not None:
     with ui["analysis"]:
         st.radio("Data Input",
@@ -167,8 +174,12 @@ if ui["analysis"] is not None:
         else:
             st.subheader("No tolerances applied")
 
+# ---> TOLERANCE EVENTS <---
 if ui["tolerance"] is not None:
-    data_for_analytics = state.get_value("data_before_analytics")
+    if not state.get_value("tolerances_applied"):
+        data_for_analytics = state.get_value("data_before_analytics")
+    else:
+        data_for_analytics = state.get_value("data_tolerances_analytics")
 
     if state.get_value("data_tolerances") is None:
         data = data_for_analytics.copy()
@@ -179,12 +190,12 @@ if ui["tolerance"] is not None:
     else: 
         data = state.get_value("data_tolerances").copy()
 
-    tol_elements = dh.tolerances_elements(data)
+    tol_elements = dh.tolerances_elements(state.get_value("data_before_analytics"))
 
     tolerances_applied = ui_main.render_tolerances(ui["tolerance"], 
                                                    tol_elements)
     state.set_value("tolerances_applied", tolerances_applied)
-    
+
     if tolerances_applied:    
         data = dh.data_after_tolerances(data)
         state.set_value("data_tolerances", data)
@@ -192,6 +203,7 @@ if ui["tolerance"] is not None:
         data = dh.data_tolerances_analytics(data, data_for_analytics)
         state.set_value("data_tolerances_analytics", data)
 
+# ---> FINAL RESULTS EVENTS <---
 if ui["results"] is not None:
     data_prelim = state.get_value("data_prelim")
 
@@ -205,7 +217,6 @@ if ui["results"] is not None:
                                             viewer_mode)
         state.set_value("failed_rows", failed_rows)
         state.set_value("data_tolerances", data_final)
-
         
         ui_main.render_prelim_results(data_final, metrics["metrics"], 
                                       ui["prelim"], ui["results"],
@@ -219,6 +230,7 @@ if ui["results"] is not None:
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
 
+# ---> EXPORT RESULTS EVENTS <---
 if ui["export"] is not None:
     metrics = state.get_value("metrics")
     
@@ -234,29 +246,20 @@ if ui["export"] is not None:
                                     metrics["metrics"])
 
     else:
-        st.write("Tolerances not Applied - Preliminary Data Available for Export")
-
         mode = "Preliminary"
         data_prelim = state.get_value("data_prelim")
-        export_plot = plt.results_export_plotter(data_prelim, 
+        data_prelim_renamed = dh.rename_columns(data_prelim, metrics["metrics"])
+        export_plot = plt.results_export_plotter(data_prelim_renamed, 
                                                 metrics["metrics"],
                                                 mode)
-        ui_main.render_export_results(data_prelim,
+        ui_main.render_export_results(data_prelim_renamed,
                                     export_plot, 
                                     ui["export"], 
                                     metrics["metrics"])
+        
+        
 
-# STATES DEBUG
-"""
-st.write({
-    "data_pipeline": st.session_state.get("data_pipeline"),
-    "rename_columns": st.session_state.get("rename_columns"),
-    "sidebar_pipeline_done": st.session_state.get("sidebar_pipeline_done"),
-    "metrics_sel_done": st.session_state.get("metrics_sel_done"),
-    "scope_sel_done": st.session_state.get("scope_sel_done"),
-    "fail_analysis_enabled": st.session_state.get("fail_analysis_enabled"),
-})
-  """    
+  
 
 
 
