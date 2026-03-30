@@ -235,14 +235,12 @@ def rename_columns(columns):
         for key, value in mapped_values.items():
 
             if key == "Sample Value Columns":
-                # regex match – aspoň jeden stĺpec musí sedieť
                 pattern = re.escape(value)
                 matches = [col for col in data.columns if re.search(pattern, col)]
 
                 if not matches:
                     missing_mapped[key] = value
 
-                # uložíš si aj matchnuté stĺpce (bude sa hodiť neskôr)
                 st.session_state["matched_sample_columns"] = matches
 
             else:
@@ -786,7 +784,8 @@ def render_export_results(data, fig, export, metrics):
                                                       metrics,
                                                       fig, 
                                                       customer_name,
-                                                      product_name)
+                                                      product_name,
+                                                      creator_name)
         pdf_bytes = st.session_state.get("pdf_bytes")
         if pdf_bytes:
             #show_pdf(pdf_bytes)

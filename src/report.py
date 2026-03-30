@@ -215,15 +215,15 @@ def build_info_subheader(story, styles, data, metrics):
     components_num = len(components)
     component_list = ', '.join(components)
     if components_num == 1:
-        components_num = "single"
+        #components_num = "single"
         component_str = "single component"
     else:
         component_str = f"{components_num} components"
 
     subboards_num = len(data[col_subboard].unique())
     if subboards_num == 1:
-        subboards_num = "single"
-        subboard_str = f"{subboards_num} sub-board"
+        #subboards_num = "single"
+        subboard_str = "single sub-board"
     else:
         subboard_str = f"{subboards_num} sub-boards"
     
@@ -231,9 +231,9 @@ def build_info_subheader(story, styles, data, metrics):
         components_per_board = 1
         components_total = components_per_board * sample_num
     else:
-        components_total = components_num * subboards_num * sample_num
+        components_total = len(data[col_components].unique()) * len(data[col_subboard].unique()) * sample_num
     
-    measurement_num = data.shape[0]
+    measurement_num = data.shape[0] * components_total
 
     label = metrics_label(metrics)
     if not label:
@@ -476,6 +476,19 @@ def build_conclusion(story, styles, data, metrics):
             Paragraph(f"Conclusion: {conclusion}", justified_style
             ))
 
+def build_signature(story, styles, name):
+    justified_style = ParagraphStyle(
+        name="Justified",
+        parent=styles["Normal"],
+        alignment=TA_JUSTIFY,
+        leading=14,          
+        spaceAfter=10,
+)
+    story.append(
+        Paragraph(f"Created by: {name}",
+                  justified_style)
+    )
+
 def dataframe_to_head_and_rows(data):
 
     data = data.copy()
@@ -561,7 +574,7 @@ def build_results_table(story, available_width, header, rows, numeric_cols=None,
     story.append(Spacer(1, 4*mm))
     story.append(table)
 
-def build_pdf(data, metrics, fig, customer, product):
+def build_pdf(data, metrics, fig, customer, product, name):
 
     pdf_buffer = io.BytesIO()
 
@@ -622,6 +635,9 @@ def build_pdf(data, metrics, fig, customer, product):
     
     # Conclusion 
     build_conclusion(story, styles, data, metrics)
+
+    # Signature
+    build_signature(story, styles, name)
 
     # Next page - Landscape Table
     story.append(NextPageTemplate("landscape"))

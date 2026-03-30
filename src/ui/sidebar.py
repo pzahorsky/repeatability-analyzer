@@ -1,9 +1,7 @@
 import streamlit as st
 import data_handler as dh
 
-# -----------------------
-# --- SIDEBAR BUTTONS ---
-# -----------------------
+# ---> SIDEBAR EVENTS <---
 
 def rename_columns():
    return st.sidebar.button("⚙️ ")

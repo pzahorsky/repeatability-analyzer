@@ -38,7 +38,7 @@ if state.has_value("data_loaded"):
     if not state.get_value("rename_columns_confirmed"):
         state.set_value("sidebar_pipeline_done", False)
         state.set_value("data_pipeline", data)
-        st.info("⚙️ Confirm column mapping to continue.")
+        st.info("⚙️ Confirm column assignment to continue.")
     else:
         state.set_value("sidebar_pipeline_done", False)
         subboards = ui_side.subboard_selector(
@@ -272,14 +272,6 @@ if ui["export"] is not None:
                                     ui["export"], 
                                     metrics["metrics"])
         
-
-
-st.write(
-    "Sidebar", state.get_value("sidebar_pipeline_done"),
-    "Metrics", state.get_value("metrics_sel_done"),
-    "Scope", state.get_value("scope_sel_done"),
-    "Analysis", state.get_value("fail_analysis_enabled")
-)
         
         
 

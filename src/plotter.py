@@ -4,6 +4,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
+# ---> PLOTTER - FAIL ANALYSIS <---
 def fail_analysis_plotter(data, metrics, mode):
     col_subboard = st.session_state["Change_Sub-Board"]
     col_component = st.session_state["Change_Component"]
@@ -232,6 +233,7 @@ def fail_analysis_plotter(data, metrics, mode):
 
     return plots
 
+# ---> PLOTTER - EXPORT DOCUMENT <---
 def results_export_plotter(data, metrics, mode):
 
     fig = None

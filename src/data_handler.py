@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 import numpy as np
-
+import re
 
 # ---> DATA LOADER <---
 def data_load(up_data) -> pd.DataFrame:
@@ -23,7 +23,6 @@ def data_load(up_data) -> pd.DataFrame:
         raise ValueError("CSV contains no rows")
     
     return df
-
 
 # ---> SUB BOARD FILTER <--- 
 def get_subboards(data):
@@ -94,7 +93,6 @@ def sample_vals_selected(data, selection):
     return data[data[col].isin(selection)]
 
 # ---> SCOPE SELECTION <---    
-
 def scope_elements(data, components):
     component_col = st.session_state["Change_Component"]
     element_col = st.session_state["Change_Element_Id"]
@@ -109,7 +107,6 @@ def scope_elements(data, components):
     )
 
 # ---> DATA FILTER AFTER SCOPE <---
-
 def data_after_scope(data, comps_and_elements):
     component_col = st.session_state["Change_Component"]
     element_col = st.session_state["Change_Element_Id"]
@@ -125,7 +122,6 @@ def data_after_scope(data, comps_and_elements):
     return data[mask]
 
 # ---> GLOBAL USL / LSL <---
-
 def usl_lsl_glob_per(data, limits):
     data = data.copy()
     mean_col = st.session_state["Change_Mean"]
@@ -140,7 +136,6 @@ def usl_lsl_glob_per(data, limits):
     return data
 
 # ---> ANALYTIC FUNCTIONS CALCULATIONS <---
-
 def analytics(data, metrics):
     data = data.copy()
     mean_col = st.session_state["Change_Mean"]
@@ -176,7 +171,6 @@ def analytics(data, metrics):
     return data
 
 # ---> PRELIM RESULTS DATA FILTER <---
-
 def data_prelim_results(data, metrics, viewer_mode):
     subboard_col = st.session_state["Change_Sub-Board"]
     component_col = st.session_state["Change_Component"]
@@ -227,6 +221,7 @@ def data_prelim_results(data, metrics, viewer_mode):
 
     return data[basic_columns]
 
+# ---> FAILED ROWS DETECTOR <---
 def prelim_failed_rows(data, metrics, viewer_mode):
 
     LIMITS = {
@@ -283,6 +278,7 @@ def tolerances_elements(data):
         .to_dict()
     )
 
+# ---> DATA FILTER AFTER TOLERANCES <---
 def data_after_tolerances(data):
     data = data.copy()
 
@@ -345,24 +341,22 @@ def data_after_tolerances(data):
 
     return data
 
+# ---> DATA + SAMPLE VALUES <---
 def data_tolerances_analytics(data_tolerances, data_sample_values):
     col_sample = st.session_state["Change_Samples"]
-    
-    data = pd.concat(
-                [data_tolerances, 
-                 data_sample_values.filter(regex=fr"{col_sample} \d+")],
-                 axis=1
-)
-    return data
+    sample_cols = data_sample_values.filter(regex=fr"^{re.escape(col_sample)} \d+$")
+    return pd.concat(
+        [data_tolerances, sample_cols.loc[:, ~sample_cols.columns.isin(data_tolerances.columns)]],
+        axis=1
+    )
 
+# ---> DATA FOR FAIL ANALYSIS <---
 def data_for_analysis(data, failed_rows):
     data_failed = data.loc[data.index.isin(list(failed_rows))]
     
     return data_failed
 
-# ----------------------------------
-# ---- ANALYSIS FAIL EXTRACTION ----
-# ----------------------------------
+# ---> HELPER FUNC FOR OUTLIERS <---
 def fail_extractor(data):
 
     usl = data["usl"]
@@ -405,6 +399,7 @@ def fail_extractor(data):
 
     return impact_df
 
+# ---> COLUMN RENAMER HELPER FUNC <---
 def rename_columns(data, metrics):
     cp = metrics.get("cp")
     cpk = metrics.get("cpk")
