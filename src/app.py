@@ -77,6 +77,7 @@ if state.has_value("data_loaded"):
         
         state.set_value("data_pipeline", data)
 
+state.update_fail_analysis_enabled()
 # ---> APP STATE CHECKER <---
 state.enforce_state_rules()
 
@@ -99,36 +100,46 @@ if ui["metrics"] is not None:
 
 # ---> SCOPE EVENTS <---
 if ui["scope"] is not None:
+    metrics = state.get_value("metrics")
+    viewer_mode = "prelim"
     elements = dh.scope_elements(
         state.get_value("data_pipeline"),
         state.get_value("components"))
+    
     if elements:
         selected_elements = ui_main.render_scope(ui["scope"], elements)
         data = dh.data_after_scope(state.get_value("data_pipeline")
                                    ,selected_elements)
         state.set_value("data_scope", data)
 
+        if metrics is not None:
+            data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
+            state.set_value("data_before_analytics", data)
+            data = dh.analytics(data, metrics["metrics"])
+            state.set_value("data_analytics", data)
+
+            data_prelim = dh.data_prelim_results(data, metrics["metrics"],
+                                                viewer_mode)
+            state.set_value("data_prelim", data_prelim)
+            
+            prelim_failed_rows = dh.prelim_failed_rows(data_prelim, 
+                                                    metrics["metrics"],
+                                                    viewer_mode)
+            state.set_value("prelim_failed_rows", prelim_failed_rows)
+            
+            scope_selected = any(selected_elements.values())
+            scope_done = st.session_state["scope_sel_done"]
+
+            if scope_selected != scope_done:
+                state.set_value("scope_sel_done", scope_selected)
+                state.update_fail_analysis_enabled()
+                st.rerun()
+
 # ---> PRELIMINARY RESULTS EVENTS <---
 if ui["prelim"] is not None:
-    metrics = state.get_value("metrics")
-    data = state.get_value("data_scope")
     viewer_mode = "prelim"
 
-    if metrics is not None:
-        data = dh.usl_lsl_glob_per(data, metrics["glob_limits"])
-        state.set_value("data_before_analytics", data)
-        data = dh.analytics(data, metrics["metrics"])
-        state.set_value("data_analytics", data)
-
-        data_prelim = dh.data_prelim_results(data, metrics["metrics"],
-                                             viewer_mode)
-        state.set_value("data_prelim", data_prelim)
-        
-        prelim_failed_rows = dh.prelim_failed_rows(data_prelim, 
-                                                   metrics["metrics"],
-                                                   viewer_mode)
-        state.set_value("prelim_failed_rows", prelim_failed_rows)
-        ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
+    ui_main.render_prelim_results(data_prelim, metrics["metrics"], 
                                       ui["prelim"], ui["results"], 
                                       viewer_mode)
 
@@ -219,6 +230,7 @@ if ui["results"] is not None:
         failed_rows = dh.prelim_failed_rows(data_final, metrics["metrics"], 
                                             viewer_mode)
         state.set_value("failed_rows", failed_rows)
+        state.update_fail_analysis_enabled()
         state.set_value("data_tolerances", data_final)
         
         ui_main.render_prelim_results(data_final, metrics["metrics"], 
@@ -265,7 +277,8 @@ if ui["export"] is not None:
 st.write(
     "Sidebar", state.get_value("sidebar_pipeline_done"),
     "Metrics", state.get_value("metrics_sel_done"),
-    "Scope", state.get_value("scope_sel_done")
+    "Scope", state.get_value("scope_sel_done"),
+    "Analysis", state.get_value("fail_analysis_enabled")
 )
         
         

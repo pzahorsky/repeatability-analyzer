@@ -36,6 +36,7 @@ def init_state():
         "last_loaded_config_name": None,
         "metrics_sel_done": False,
         "metrics": None,
+        "scope_selected": False,
         "scope_sel_done": False,
         "prelim_active": False,
         "prelim_failed_rows": None,
@@ -83,3 +84,9 @@ def enforce_state_rules():
 
     if not s.get("prelim_failed_rows"):
         s["fail_analysis_enabled"] = False
+
+def update_fail_analysis_enabled():
+    prelim_failed = st.session_state.get("prelim_failed_rows")
+    final_failed = st.session_state.get("failed_rows")
+
+    st.session_state["fail_analysis_enabled"] = bool(prelim_failed) or bool(final_failed)
