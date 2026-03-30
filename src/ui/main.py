@@ -455,19 +455,6 @@ def render_scope(scope, elements):
             selection_dict[component] = selected_elements
             st.markdown("---")
 
-        
-        scope_selected = any(selection_dict.values())
-        scope_done = st.session_state["scope_sel_done"]
-
-        """
-        if not scope_done and scope_selected:
-            st.session_state["scope_sel_done"] = True
-            st.rerun()
-        
-        elif scope_done and not scope_selected:
-            st.session_state["scope_sel_done"] = False
-            st.rerun()
-      """  
         return selection_dict
 
 # ---> PRELIM RESULTS <--- 
