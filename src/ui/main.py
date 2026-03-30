@@ -373,7 +373,7 @@ def render_metrics(metrics):
             
             c1, c2, c3, c4 = st.columns([1.5, 4.5, 4, 1])
 
-            c1.markdown(f"**{row["name"]}**")
+            c1.markdown(f"**{row['name']}**")
             c2.caption(row["desc"])
             c3.markdown(row["formula"], unsafe_allow_html=True)
 
